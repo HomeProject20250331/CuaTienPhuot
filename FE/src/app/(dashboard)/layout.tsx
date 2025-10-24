@@ -2,31 +2,16 @@
 
 import Footer from "@/components/layout/footer";
 import Header from "@/components/layout/header";
-import { useAuthGuard } from "@/hooks/useAuthGuard";
+import { useAuth } from "@/lib/api/hooks/auth";
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { authLoading, shouldRender } = useAuthGuard();
+  const { user, isAuthenticated, isLoading } = useAuth();
 
-  // Hiển thị loading khi đang kiểm tra authentication
-  if (authLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-2 text-gray-600">Đang tải...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Không render gì nếu chưa đăng nhập (sẽ redirect về login)
-  if (!shouldRender) {
-    return null;
-  }
+  console.log("Auth state:", { user, isAuthenticated, isLoading });
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">

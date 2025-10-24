@@ -11,7 +11,7 @@ export { QueryProvider } from "../query-provider";
 export { apiClient, apiUtils, tokenManager } from "../axios-client";
 export type { ApiResponse, PaginationResponse } from "../axios-client";
 
-// Auth hooks
+// Auth hooks (Legacy - consider migrating to Server Actions)
 export {
   useAuth,
   useChangePassword,

@@ -1,9 +1,13 @@
+"use client";
+
 /**
  * Authentication API Hooks
  * Custom hooks cho authentication sử dụng React Query
  */
 
+import { authStorage } from "@/lib/auth/localStorage";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import type { ApiResponse } from "../axios-client";
 import { apiClient, tokenManager } from "../axios-client";
 import { API_CONFIG } from "../config";
@@ -70,7 +74,8 @@ const authApi = {
   login: async (
     credentials: LoginRequest
   ): Promise<ApiResponse<AuthResponse>> => {
-    const response = await apiClient.post<ApiResponse<AuthResponse>>(
+    const client = apiClient;
+    const response = await client.post<ApiResponse<AuthResponse>>(
       API_CONFIG.ENDPOINTS.AUTH.LOGIN,
       credentials
     );
@@ -81,7 +86,8 @@ const authApi = {
   register: async (
     userData: RegisterRequest
   ): Promise<ApiResponse<AuthResponse>> => {
-    const response = await apiClient.post<ApiResponse<AuthResponse>>(
+    const client = apiClient;
+    const response = await client.post<ApiResponse<AuthResponse>>(
       API_CONFIG.ENDPOINTS.AUTH.REGISTER,
       userData
     );
@@ -90,7 +96,8 @@ const authApi = {
 
   // Get current user
   getCurrentUser: async (): Promise<ApiResponse<User>> => {
-    const response = await apiClient.get<ApiResponse<User>>(
+    const client = apiClient;
+    const response = await client.get<ApiResponse<User>>(
       API_CONFIG.ENDPOINTS.AUTH.ME
     );
     return response.data;
@@ -100,7 +107,8 @@ const authApi = {
   updateProfile: async (
     data: UpdateProfileRequest
   ): Promise<ApiResponse<User>> => {
-    const response = await apiClient.put<ApiResponse<User>>(
+    const client = apiClient;
+    const response = await client.put<ApiResponse<User>>(
       API_CONFIG.ENDPOINTS.USERS.UPDATE_PROFILE,
       data
     );
@@ -111,7 +119,8 @@ const authApi = {
   changePassword: async (
     data: ChangePasswordRequest
   ): Promise<ApiResponse<void>> => {
-    const response = await apiClient.put<ApiResponse<void>>(
+    const client = apiClient;
+    const response = await client.put<ApiResponse<void>>(
       API_CONFIG.ENDPOINTS.USERS.CHANGE_PASSWORD,
       data
     );
@@ -122,7 +131,8 @@ const authApi = {
   forgotPassword: async (
     data: ForgotPasswordRequest
   ): Promise<ApiResponse<void>> => {
-    const response = await apiClient.post<ApiResponse<void>>(
+    const client = apiClient;
+    const response = await client.post<ApiResponse<void>>(
       API_CONFIG.ENDPOINTS.AUTH.FORGOT_PASSWORD,
       data
     );
@@ -133,7 +143,8 @@ const authApi = {
   resetPassword: async (
     data: ResetPasswordRequest
   ): Promise<ApiResponse<void>> => {
-    const response = await apiClient.post<ApiResponse<void>>(
+    const client = apiClient;
+    const response = await client.post<ApiResponse<void>>(
       API_CONFIG.ENDPOINTS.AUTH.RESET_PASSWORD,
       data
     );
@@ -142,7 +153,8 @@ const authApi = {
 
   // Logout
   logout: async (): Promise<ApiResponse<void>> => {
-    const response = await apiClient.post<ApiResponse<void>>(
+    const client = apiClient;
+    const response = await client.post<ApiResponse<void>>(
       API_CONFIG.ENDPOINTS.AUTH.LOGOUT
     );
     return response.data;
@@ -156,6 +168,7 @@ export function useLogin() {
   return useMutation({
     mutationFn: authApi.login,
     onSuccess: (response) => {
+      console.log("Login success:", response);
       if (response.success && response.data) {
         // Store tokens
         tokenManager.setTokens(
@@ -293,13 +306,51 @@ export function useLogout() {
 }
 
 // Utility hook để check authentication status
+// Sử dụng localStorage thay vì cookies
 export function useAuth() {
-  const { data: user, isLoading, error } = useCurrentUser();
+  const [user, setUser] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const initAuth = () => {
+      if (typeof window === "undefined") {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        // Đọc user data từ localStorage
+        const userData = authStorage.getUser();
+        const isAuth = authStorage.isAuthenticated();
+
+        setUser(userData);
+        setIsAuthenticated(isAuth);
+      } catch (error) {
+        console.error("Error parsing auth data:", error);
+        setUser(null);
+        setIsAuthenticated(false);
+      }
+
+      setIsLoading(false);
+    };
+
+    initAuth();
+  }, []);
+
+  // Debug logging
+  if (typeof window !== "undefined") {
+    console.log("useAuth debug:", {
+      user,
+      isAuthenticated,
+      isLoading,
+    });
+  }
 
   return {
-    user: user?.data,
+    user,
     isLoading,
-    isAuthenticated: !!user?.data && tokenManager.isAuthenticated(),
-    error,
+    isAuthenticated,
+    error: null,
   };
 }

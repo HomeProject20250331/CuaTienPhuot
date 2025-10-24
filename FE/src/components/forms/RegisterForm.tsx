@@ -10,12 +10,16 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useRegister } from "@/lib/api/hooks/auth";
+import { authStorage } from "@/lib/auth/localStorage";
 import { registerSchema, type RegisterFormData } from "@/lib/validations/auth";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 
 export function RegisterForm() {
   const registerMutation = useRegister();
+  const router = useRouter();
 
   const form = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -28,18 +32,32 @@ export function RegisterForm() {
     },
   });
 
-  const onSubmit = async (data: RegisterFormData) => {
-    try {
-      await registerMutation.mutateAsync({
-        name: data.name,
-        email: data.email,
-        password: data.password,
-        confirmPassword: data.confirmPassword,
-        acceptTerms: data.acceptTerms,
-      });
-    } catch (error) {
-      // Error handling được xử lý trong mutation
+  // Handle redirect when register is successful
+  useEffect(() => {
+    if (
+      registerMutation.isSuccess &&
+      registerMutation.data?.success &&
+      registerMutation.data.data
+    ) {
+      const { user, accessToken, refreshToken } = registerMutation.data.data;
+
+      // Store in localStorage
+      authStorage.setTokens(accessToken, refreshToken);
+      authStorage.setUser(user);
+
+      console.log("Register successful, redirecting to dashboard");
+      router.push("/dashboard");
     }
+  }, [registerMutation.isSuccess, registerMutation.data, router]);
+
+  const onSubmit = async (data: RegisterFormData) => {
+    registerMutation.mutate({
+      name: data.name,
+      email: data.email,
+      password: data.password,
+      confirmPassword: data.confirmPassword,
+      acceptTerms: data.acceptTerms,
+    });
   };
 
   return (
@@ -138,6 +156,11 @@ export function RegisterForm() {
             </FormItem>
           )}
         />
+        {registerMutation.error && (
+          <div className="text-red-500 text-sm text-center">
+            {registerMutation.error.message || "Đăng ký thất bại"}
+          </div>
+        )}
         <Button
           type="submit"
           className="w-full h-11 text-base font-medium"

@@ -3,6 +3,7 @@
  * Cấu hình axios với interceptors cho authentication và error handling
  */
 
+import { authStorage } from "@/lib/auth/localStorage";
 import axios, {
   AxiosError,
   AxiosInstance,
@@ -54,23 +55,20 @@ class TokenManager {
 
     // Store in localStorage for persistence
     if (typeof window !== "undefined") {
-      localStorage.setItem("accessToken", accessToken);
-      if (refreshToken) {
-        localStorage.setItem("refreshToken", refreshToken);
-      }
+      authStorage.setTokens(accessToken, refreshToken || "");
     }
   }
 
   getAccessToken(): string | null {
     if (!this.accessToken && typeof window !== "undefined") {
-      this.accessToken = localStorage.getItem("accessToken");
+      this.accessToken = authStorage.getAccessToken();
     }
     return this.accessToken;
   }
 
   getRefreshToken(): string | null {
     if (!this.refreshToken && typeof window !== "undefined") {
-      this.refreshToken = localStorage.getItem("refreshToken");
+      this.refreshToken = authStorage.getRefreshToken();
     }
     return this.refreshToken;
   }
@@ -80,17 +78,16 @@ class TokenManager {
     this.refreshToken = null;
 
     if (typeof window !== "undefined") {
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
+      authStorage.clearTokens();
     }
   }
 
   isAuthenticated(): boolean {
-    // Server-side luôn return false để tránh hydration mismatch
+    // Sử dụng localStorage để check authentication
     if (typeof window === "undefined") {
-      return false;
+      return false; // Server-side sẽ được handle bởi middleware
     }
-    return !!this.getAccessToken();
+    return authStorage.isAuthenticated();
   }
 }
 

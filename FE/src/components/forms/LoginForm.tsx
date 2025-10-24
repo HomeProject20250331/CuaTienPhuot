@@ -10,12 +10,16 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useLogin } from "@/lib/api/hooks/auth";
+import { authStorage } from "@/lib/auth/localStorage";
 import { loginSchema, type LoginFormData } from "@/lib/validations/auth";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 
 export function LoginForm() {
   const loginMutation = useLogin();
+  const router = useRouter();
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -26,16 +30,30 @@ export function LoginForm() {
     },
   });
 
-  const onSubmit = async (data: LoginFormData) => {
-    try {
-      await loginMutation.mutateAsync({
-        email: data.email,
-        password: data.password,
-        rememberMe: data.remember,
-      });
-    } catch (error) {
-      // Error handling được xử lý trong mutation
+  // Handle redirect when login is successful
+  useEffect(() => {
+    if (
+      loginMutation.isSuccess &&
+      loginMutation.data?.success &&
+      loginMutation.data.data
+    ) {
+      const { user, accessToken, refreshToken } = loginMutation.data.data;
+
+      // Store in localStorage
+      authStorage.setTokens(accessToken, refreshToken);
+      authStorage.setUser(user);
+
+      console.log("Login successful, redirecting to dashboard");
+      router.push("/dashboard");
     }
+  }, [loginMutation.isSuccess, loginMutation.data, router]);
+
+  const onSubmit = async (data: LoginFormData) => {
+    loginMutation.mutate({
+      email: data.email,
+      password: data.password,
+      rememberMe: data.remember,
+    });
   };
 
   return (
@@ -94,6 +112,11 @@ export function LoginForm() {
             </FormItem>
           )}
         />
+        {loginMutation.error && (
+          <div className="text-red-500 text-sm text-center">
+            {loginMutation.error.message || "Đăng nhập thất bại"}
+          </div>
+        )}
         <Button
           type="submit"
           className="w-full h-11 text-base font-medium"
