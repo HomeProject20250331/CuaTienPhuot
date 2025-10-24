@@ -144,7 +144,7 @@ Epic này bao gồm tất cả các chức năng liên quan đến quản lý t�
 - Họ tên: Bắt buộc, tối đa 100 ký tự
 - Số điện thoại: Format Việt Nam (10-11 số)
 - Ngày sinh: Không được trong tương lai
-- Ảnh đại diện: JPG/PNG, tối đa 5MB
+- Ảnh đại diện: JPG/PNG/PDF, tối đa 5MB
 
 #### Error Handling:
 

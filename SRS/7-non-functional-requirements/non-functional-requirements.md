@@ -45,11 +45,11 @@ Tài liệu này mô tả các yêu cầu phi chức năng (Non-Functional Requi
 
 - **Password Policy**:
   - Tối thiểu 8 ký tự
-  - Bao gồm chữ hoa, chữ thường, số và ký tự đặc biệt
+  - Bao gồm ít nhất 1 chữ hoa, 1 chữ thường, 1 số
   - Không được trùng với thông tin cá nhân
   - Không được sử dụng lại 5 mật khẩu gần nhất
 - **Session Management**:
-  - JWT tokens với expiration time 24h
+  - JWT tokens với expiration time 1h (access token)
   - Refresh tokens với expiration time 7 ngày
   - Automatic logout sau 30 phút không hoạt động
 - **Multi-factor Authentication**: Tùy chọn SMS/Email OTP

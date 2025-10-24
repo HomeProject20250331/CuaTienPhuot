@@ -249,12 +249,12 @@ MongoDB Database: cuatienphuot
 ### Security Measures
 
 - **Password Hashing**: bcrypt với salt rounds = 12
-- **JWT Expiration**: Access token 24 giờ, Refresh token 7 ngày
+- **JWT Expiration**: Access token 1 giờ, Refresh token 7 ngày
 - **Rate Limiting**: 100 requests/phút per IP
 - **Input Validation**: Zod schemas cho tất cả inputs
 - **CORS**: Chỉ cho phép domain frontend
 - **HTTPS**: Bắt buộc cho tất cả communications
-- **File Upload**: Chỉ cho phép image files, max 5MB
+- **File Upload**: Chỉ cho phép image files và PDF, max 5MB
 
 ## 2.6 Performance Considerations
 

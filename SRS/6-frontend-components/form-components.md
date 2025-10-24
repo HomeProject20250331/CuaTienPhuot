@@ -144,12 +144,17 @@ Input.displayName = "Input";
 export { Input };
 ```
 
-### Form Input Usage với React Hook Form
+### Form Input Usage với React Hook Form và Input Group
 
 ```typescript
 // components/forms/FormInput.tsx
 import { forwardRef } from "react";
 import { Input } from "@/components/ui/input";
+import {
+  InputGroup,
+  InputLeftElement,
+  InputRightElement,
+} from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
@@ -173,28 +178,18 @@ export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
             {label}
           </Label>
         )}
-        <div className="relative">
-          {leftIcon && (
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-              {leftIcon}
-            </div>
-          )}
+        <InputGroup>
+          {leftIcon && <InputLeftElement>{leftIcon}</InputLeftElement>}
           <Input
             ref={ref}
             className={cn(
-              leftIcon && "pl-10",
-              rightIcon && "pr-10",
               error && "border-destructive focus-visible:ring-destructive",
               className
             )}
             {...props}
           />
-          {rightIcon && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-              {rightIcon}
-            </div>
-          )}
-        </div>
+          {rightIcon && <InputRightElement>{rightIcon}</InputRightElement>}
+        </InputGroup>
         {error && <p className="text-sm text-destructive">{error}</p>}
         {helperText && !error && (
           <p className="text-sm text-muted-foreground">{helperText}</p>
@@ -209,17 +204,21 @@ FormInput.displayName = "FormInput";
 **Features:**
 
 - Tích hợp với React Hook Form
-- Shadcn/ui styling
+- Shadcn/ui InputGroup cho left/right icons
 - Error state với styling
-- Left/right icons
 - Accessibility support
 - TypeScript support
 
-### Textarea (`Textarea`)
+### Textarea với Shadcn/ui
 
 ```typescript
-// components/forms/Textarea.tsx
-interface TextareaProps
+// components/forms/FormTextarea.tsx
+import { forwardRef } from "react";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
+
+interface FormTextareaProps
   extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   label?: string;
   error?: string;
@@ -227,48 +226,49 @@ interface TextareaProps
   resize?: "none" | "vertical" | "horizontal" | "both";
 }
 
-export function Textarea({
-  label,
-  error,
-  helperText,
-  resize = "vertical",
-  className,
-  ...props
-}: TextareaProps) {
-  return (
-    <div className="space-y-2">
-      {label && (
-        <Label htmlFor={props.id} className="text-sm font-medium">
-          {label}
-        </Label>
-      )}
-      <textarea
-        className={cn(
-          "flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-          error && "border-destructive focus-visible:ring-destructive",
-          resize === "none" && "resize-none",
-          resize === "vertical" && "resize-y",
-          resize === "horizontal" && "resize-x",
-          resize === "both" && "resize",
-          className
+export const FormTextarea = forwardRef<HTMLTextAreaElement, FormTextareaProps>(
+  (
+    { label, error, helperText, resize = "vertical", className, ...props },
+    ref
+  ) => {
+    return (
+      <div className="space-y-2">
+        {label && (
+          <Label htmlFor={props.id} className="text-sm font-medium">
+            {label}
+          </Label>
         )}
-        {...props}
-      />
-      {error && <p className="text-sm text-destructive">{error}</p>}
-      {helperText && !error && (
-        <p className="text-sm text-muted-foreground">{helperText}</p>
-      )}
-    </div>
-  );
-}
+        <Textarea
+          ref={ref}
+          className={cn(
+            error && "border-destructive focus-visible:ring-destructive",
+            resize === "none" && "resize-none",
+            resize === "vertical" && "resize-y",
+            resize === "horizontal" && "resize-x",
+            resize === "both" && "resize",
+            className
+          )}
+          {...props}
+        />
+        {error && <p className="text-sm text-destructive">{error}</p>}
+        {helperText && !error && (
+          <p className="text-sm text-muted-foreground">{helperText}</p>
+        )}
+      </div>
+    );
+  }
+);
+FormTextarea.displayName = "FormTextarea";
 ```
 
 **Features:**
 
+- Sử dụng Shadcn/ui Textarea component
 - Auto-resize option
 - Character count
 - Error handling
 - Accessibility support
+- TypeScript support
 
 ## Select Components
 

@@ -123,7 +123,7 @@ const createAxiosInstance = (): AxiosInstance => {
       return config;
     },
     (error) => {
-      console.error("❌ Request Error:", error);
+      console.warn("❌ Request Error:", error);
       return Promise.reject(error);
     }
   );
@@ -148,7 +148,7 @@ const createAxiosInstance = (): AxiosInstance => {
 
       // Log error in development
       if (process.env.NODE_ENV === "development") {
-        console.error(`❌ API Error: ${originalRequest?.url}`, {
+        console.warn(`❌ API Error: ${originalRequest?.url}`, {
           status: error.response?.status,
           data: error.response?.data,
           message: error.message,

@@ -18,7 +18,7 @@
 ### Validation Rules
 
 - `email`: Required, valid email format, unique
-- `password`: Required, min 8 characters, must contain letters and numbers
+- `password`: Required, min 8 characters, must contain at least 1 uppercase, 1 lowercase, and 1 number
 - `fullName`: Required, min 2 characters, max 100 characters
 - `phone`: Optional, valid Vietnamese phone format
 
@@ -186,6 +186,7 @@ Gửi email reset mật khẩu.
 
 - Email reset sẽ có hiệu lực trong 15 phút
 - Chỉ gửi 1 email reset mỗi 5 phút cho cùng 1 email
+- Email verification có hiệu lực trong 24 giờ
 
 ---
 
@@ -205,7 +206,7 @@ Gửi email reset mật khẩu.
 ### Validation Rules
 
 - `token`: Required, valid reset token
-- `newPassword`: Required, min 8 characters, must contain letters and numbers
+- `newPassword`: Required, min 8 characters, must contain at least 1 uppercase, 1 lowercase, and 1 number
 
 ### Success Response (200)
 

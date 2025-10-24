@@ -126,6 +126,20 @@ Tài liệu Software Requirements Specification (SRS) cho ứng dụng web chia 
   - Risk Communication
   - Success Metrics
 
+### ✅ Phần 11: Cross-Reference Table
+
+- [Cross-Reference Table](./CROSS_REFERENCE_TABLE.md)
+  - Authentication & Security Parameters
+  - Email & Communication Parameters
+  - File Upload Parameters
+  - Rate Limiting Parameters
+  - Performance Parameters
+  - Database Parameters
+  - Business Logic Parameters
+  - Validation Rules
+  - Error Handling Standards
+  - Compliance & Legal
+
 ## Trạng thái hoàn thành
 
 - ✅ **Phần 1**: Tổng quan dự án - Hoàn thành
@@ -138,6 +152,7 @@ Tài liệu Software Requirements Specification (SRS) cho ứng dụng web chia 
 - ✅ **Phần 8**: Payment Formulas - Hoàn thành
 - ✅ **Phần 9**: Acceptance Criteria - Hoàn thành (54 criteria)
 - ✅ **Phần 10**: Risks & Mitigation - Hoàn thành (19 risks)
+- ✅ **Phần 11**: Cross-Reference Table - Hoàn thành (10 parameter categories)
 
 ## Cách sử dụng
 
@@ -150,6 +165,7 @@ Tài liệu Software Requirements Specification (SRS) cho ứng dụng web chia 
 7. **Quality Assurance**: Áp dụng Phần 7 (Non-functional requirements) và Phần 9 (Acceptance criteria)
 8. **Payment Logic**: Implement Phần 8 (Payment formulas) cho tính toán chia tiền
 9. **Risk Management**: Tham khảo Phần 10 để quản lý rủi ro trong quá trình phát triển
+10. **Consistency Check**: Sử dụng Phần 11 (Cross-reference table) để đảm bảo tính nhất quán
 
 ## Tổng kết dự án
 
