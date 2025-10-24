@@ -2,56 +2,89 @@
 
 ## API Client
 
-### Base API Client (`apiClient`)
+### Base API Client với Axios (`apiClient`)
 
 ```typescript
-// lib/api-client.ts
+// lib/api/axios-client.ts
+import axios, {
+  AxiosInstance,
+  AxiosRequestConfig,
+  AxiosResponse,
+  AxiosError,
+} from "axios";
+
 class ApiClient {
-  private baseURL: string;
-  private defaultHeaders: Record<string, string>;
+  private axiosInstance: AxiosInstance;
+  private isRefreshing = false;
+  private failedQueue: Array<{
+    resolve: (value?: any) => void;
+    reject: (reason?: any) => void;
+  }> = [];
 
   constructor(baseURL: string) {
-    this.baseURL = baseURL;
-    this.defaultHeaders = {
-      "Content-Type": "application/json",
-    };
+    this.axiosInstance = axios.create({
+      baseURL,
+      timeout: 10000,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    this.setupInterceptors();
   }
 
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<T> {
-    const url = `${this.baseURL}${endpoint}`;
-    const token = localStorage.getItem("accessToken");
-
-    const config: RequestInit = {
-      ...options,
-      headers: {
-        ...this.defaultHeaders,
-        ...(token && { Authorization: `Bearer ${token}` }),
-        ...options.headers,
-      },
-    };
-
-    try {
-      const response = await fetch(url, config);
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          // Token expired, try to refresh
-          await this.refreshToken();
-          // Retry the original request
-          return this.request(endpoint, options);
+  private setupInterceptors(): void {
+    // Request interceptor để thêm token
+    this.axiosInstance.interceptors.request.use(
+      (config) => {
+        const token = localStorage.getItem("accessToken");
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
         }
-        throw new Error(`HTTP error! status: ${response.status}`);
+        return config;
+      },
+      (error) => {
+        return Promise.reject(error);
       }
+    );
 
-      const data = await response.json();
-      return data;
-    } catch (error) {
-      console.error("API request failed:", error);
-      throw error;
-    }
+    // Response interceptor để xử lý token refresh
+    this.axiosInstance.interceptors.response.use(
+      (response: AxiosResponse) => response,
+      async (error: AxiosError) => {
+        const originalRequest = error.config as AxiosRequestConfig & {
+          _retry?: boolean;
+        };
+
+        if (error.response?.status === 401 && !originalRequest._retry) {
+          if (this.isRefreshing) {
+            // Nếu đang refresh token, thêm request vào queue
+            return new Promise((resolve, reject) => {
+              this.failedQueue.push({ resolve, reject });
+            }).then(() => {
+              return this.axiosInstance(originalRequest);
+            });
+          }
+
+          originalRequest._retry = true;
+          this.isRefreshing = true;
+
+          try {
+            await this.refreshToken();
+            this.processQueue(null);
+            return this.axiosInstance(originalRequest);
+          } catch (refreshError) {
+            this.processQueue(refreshError);
+            this.redirectToLogin();
+            return Promise.reject(refreshError);
+          } finally {
+            this.isRefreshing = false;
+          }
+        }
+
+        return Promise.reject(error);
+      }
+    );
   }
 
   private async refreshToken(): Promise<void> {
@@ -61,69 +94,79 @@ class ApiClient {
     }
 
     try {
-      const response = await fetch(`${this.baseURL}/auth/refresh-token`, {
-        method: "POST",
-        headers: this.defaultHeaders,
-        body: JSON.stringify({ refreshToken }),
-      });
+      const response = await axios.post(
+        `${this.axiosInstance.defaults.baseURL}/auth/refresh-token`,
+        {
+          refreshToken,
+        }
+      );
 
-      if (!response.ok) {
-        throw new Error("Token refresh failed");
-      }
-
-      const data = await response.json();
-      localStorage.setItem("accessToken", data.accessToken);
-      localStorage.setItem("refreshToken", data.refreshToken);
+      const { accessToken, refreshToken: newRefreshToken } = response.data;
+      localStorage.setItem("accessToken", accessToken);
+      localStorage.setItem("refreshToken", newRefreshToken);
     } catch (error) {
-      // Clear tokens and redirect to login
       localStorage.removeItem("accessToken");
       localStorage.removeItem("refreshToken");
-      window.location.href = "/auth/login";
       throw error;
     }
   }
 
+  private processQueue(error: any): void {
+    this.failedQueue.forEach(({ resolve, reject }) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve();
+      }
+    });
+    this.failedQueue = [];
+  }
+
+  private redirectToLogin(): void {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    window.location.href = "/auth/login";
+  }
+
   // HTTP Methods
   async get<T>(endpoint: string, params?: Record<string, any>): Promise<T> {
-    const url = new URL(`${this.baseURL}${endpoint}`);
-    if (params) {
-      Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
-          url.searchParams.append(key, String(value));
-        }
-      });
-    }
-    return this.request<T>(url.pathname + url.search);
+    const response = await this.axiosInstance.get(endpoint, { params });
+    return response.data;
   }
 
-  async post<T>(endpoint: string, data?: any): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: "POST",
-      body: data ? JSON.stringify(data) : undefined,
-    });
+  async post<T>(
+    endpoint: string,
+    data?: any,
+    config?: AxiosRequestConfig
+  ): Promise<T> {
+    const response = await this.axiosInstance.post(endpoint, data, config);
+    return response.data;
   }
 
-  async put<T>(endpoint: string, data?: any): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: "PUT",
-      body: data ? JSON.stringify(data) : undefined,
-    });
+  async put<T>(
+    endpoint: string,
+    data?: any,
+    config?: AxiosRequestConfig
+  ): Promise<T> {
+    const response = await this.axiosInstance.put(endpoint, data, config);
+    return response.data;
   }
 
-  async patch<T>(endpoint: string, data?: any): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: "PATCH",
-      body: data ? JSON.stringify(data) : undefined,
-    });
+  async patch<T>(
+    endpoint: string,
+    data?: any,
+    config?: AxiosRequestConfig
+  ): Promise<T> {
+    const response = await this.axiosInstance.patch(endpoint, data, config);
+    return response.data;
   }
 
-  async delete<T>(endpoint: string): Promise<T> {
-    return this.request<T>(endpoint, {
-      method: "DELETE",
-    });
+  async delete<T>(endpoint: string, config?: AxiosRequestConfig): Promise<T> {
+    const response = await this.axiosInstance.delete(endpoint, config);
+    return response.data;
   }
 
-  // File upload
+  // File upload với progress tracking
   async uploadFile<T>(
     endpoint: string,
     file: File,
@@ -132,41 +175,48 @@ class ApiClient {
     const formData = new FormData();
     formData.append("file", file);
 
-    const token = localStorage.getItem("accessToken");
-
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-
-      xhr.upload.addEventListener("progress", (event) => {
-        if (event.lengthComputable && onProgress) {
-          const progress = (event.loaded / event.total) * 100;
+    const config: AxiosRequestConfig = {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+      onUploadProgress: (progressEvent) => {
+        if (onProgress && progressEvent.total) {
+          const progress = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total
+          );
           onProgress(progress);
         }
-      });
+      },
+    };
 
-      xhr.addEventListener("load", () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            const response = JSON.parse(xhr.responseText);
-            resolve(response);
-          } catch (error) {
-            reject(new Error("Invalid JSON response"));
-          }
-        } else {
-          reject(new Error(`Upload failed: ${xhr.status}`));
-        }
-      });
+    const response = await this.axiosInstance.post(endpoint, formData, config);
+    return response.data;
+  }
 
-      xhr.addEventListener("error", () => {
-        reject(new Error("Upload failed"));
-      });
-
-      xhr.open("POST", `${this.baseURL}${endpoint}`);
-      if (token) {
-        xhr.setRequestHeader("Authorization", `Bearer ${token}`);
-      }
-      xhr.send(formData);
+  // Download file
+  async downloadFile(endpoint: string, filename?: string): Promise<void> {
+    const response = await this.axiosInstance.get(endpoint, {
+      responseType: "blob",
     });
+
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", filename || "download");
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  }
+
+  // Cancel request
+  getCancelToken() {
+    return axios.CancelToken.source();
+  }
+
+  // Get axios instance for advanced usage
+  getAxiosInstance(): AxiosInstance {
+    return this.axiosInstance;
   }
 }
 
@@ -178,16 +228,230 @@ export const apiClient = new ApiClient(
 
 **Features:**
 
-- Automatic token management
-- Token refresh handling
-- Error handling
-- File upload with progress
-- Type-safe requests
+- **Automatic token management**: Tự động thêm Bearer token vào mọi request
+- **Smart token refresh**: Tự động refresh token khi hết hạn và retry request
+- **Request queuing**: Queue các request khi đang refresh token để tránh duplicate calls
+- **Advanced error handling**: Xử lý lỗi với interceptors và retry logic
+- **File upload với progress**: Upload file với progress tracking tích hợp
+- **File download**: Hỗ trợ download file với blob response
+- **Request cancellation**: Hỗ trợ cancel request với CancelToken
+- **Type-safe requests**: TypeScript support đầy đủ
+- **Request/Response interceptors**: Tùy chỉnh request và response
+- **Timeout configuration**: Cấu hình timeout cho requests
+- **Axios instance access**: Truy cập axios instance để sử dụng tính năng nâng cao
+
+### Axios Configuration (`axiosConfig`)
+
+```typescript
+// lib/api/config.ts
+import axios from "axios";
+
+export const axiosConfig = {
+  // Base configuration
+  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api",
+  timeout: 10000,
+
+  // Default headers
+  headers: {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  },
+
+  // Request transformation
+  transformRequest: [
+    (data: any, headers: any) => {
+      // Transform request data if needed
+      if (data instanceof FormData) {
+        delete headers["Content-Type"]; // Let browser set it
+      }
+      return data;
+    },
+  ],
+
+  // Response transformation
+  transformResponse: [
+    (data: string) => {
+      try {
+        return JSON.parse(data);
+      } catch (error) {
+        return data;
+      }
+    },
+  ],
+
+  // Validate status
+  validateStatus: (status: number) => {
+    return status >= 200 && status < 300;
+  },
+
+  // Retry configuration
+  retry: {
+    retries: 3,
+    retryDelay: (retryCount: number) => {
+      return Math.pow(2, retryCount) * 1000; // Exponential backoff
+    },
+    retryCondition: (error: any) => {
+      return error.response?.status >= 500 || error.code === "ECONNABORTED";
+    },
+  },
+};
+
+// Create axios instance with configuration
+export const axiosInstance = axios.create(axiosConfig);
+```
+
+### Error Handling (`errorHandler`)
+
+```typescript
+// lib/api/error-handler.ts
+import { AxiosError, AxiosResponse } from "axios";
+
+export interface ApiError {
+  message: string;
+  status?: number;
+  code?: string;
+  details?: any;
+}
+
+export class ApiErrorHandler {
+  static handle(error: AxiosError): ApiError {
+    if (error.response) {
+      // Server responded with error status
+      const { status, data } = error.response;
+
+      return {
+        message: data?.message || this.getDefaultErrorMessage(status),
+        status,
+        code: data?.code,
+        details: data?.details,
+      };
+    } else if (error.request) {
+      // Request was made but no response received
+      return {
+        message: "Không thể kết nối đến server",
+        code: "NETWORK_ERROR",
+      };
+    } else {
+      // Something else happened
+      return {
+        message: error.message || "Có lỗi xảy ra",
+        code: "UNKNOWN_ERROR",
+      };
+    }
+  }
+
+  private static getDefaultErrorMessage(status: number): string {
+    const messages: Record<number, string> = {
+      400: "Yêu cầu không hợp lệ",
+      401: "Không có quyền truy cập",
+      403: "Bị cấm truy cập",
+      404: "Không tìm thấy tài nguyên",
+      409: "Xung đột dữ liệu",
+      422: "Dữ liệu không hợp lệ",
+      429: "Quá nhiều yêu cầu",
+      500: "Lỗi server",
+      502: "Bad Gateway",
+      503: "Service Unavailable",
+      504: "Gateway Timeout",
+    };
+
+    return messages[status] || "Có lỗi xảy ra";
+  }
+
+  static isNetworkError(error: any): boolean {
+    return error.code === "NETWORK_ERROR" || error.code === "ECONNABORTED";
+  }
+
+  static isAuthError(error: any): boolean {
+    return error.status === 401 || error.status === 403;
+  }
+
+  static isValidationError(error: any): boolean {
+    return error.status === 422;
+  }
+
+  static isServerError(error: any): boolean {
+    return error.status >= 500;
+  }
+}
+
+// Global error handler
+export const globalErrorHandler = (error: AxiosError) => {
+  const apiError = ApiErrorHandler.handle(error);
+
+  // Log error for debugging
+  console.error("API Error:", apiError);
+
+  // Show user-friendly message
+  if (typeof window !== "undefined") {
+    // You can integrate with your notification system here
+    // toast.error(apiError.message);
+  }
+
+  return apiError;
+};
+```
+
+### Request/Response Interceptors (`interceptors`)
+
+```typescript
+// lib/api/interceptors.ts
+import { AxiosRequestConfig, AxiosResponse, AxiosError } from "axios";
+import { globalErrorHandler } from "./error-handler";
+
+// Request interceptor
+export const requestInterceptor = (config: AxiosRequestConfig) => {
+  // Add timestamp to prevent caching
+  if (config.method === "get") {
+    config.params = {
+      ...config.params,
+      _t: Date.now(),
+    };
+  }
+
+  // Add request ID for tracking
+  config.headers["X-Request-ID"] = Math.random().toString(36).substr(2, 9);
+
+  return config;
+};
+
+// Response interceptor
+export const responseInterceptor = (response: AxiosResponse) => {
+  // Log successful requests
+  console.log(
+    `✅ ${response.config.method?.toUpperCase()} ${response.config.url} - ${
+      response.status
+    }`
+  );
+
+  return response;
+};
+
+// Error interceptor
+export const errorInterceptor = (error: AxiosError) => {
+  // Handle global errors
+  const apiError = globalErrorHandler(error);
+
+  // Special handling for specific errors
+  if (ApiErrorHandler.isAuthError(apiError)) {
+    // Redirect to login or show auth modal
+    if (typeof window !== "undefined") {
+      window.location.href = "/auth/login";
+    }
+  }
+
+  return Promise.reject(apiError);
+};
+```
 
 ### API Services
 
 ```typescript
-// lib/api-services.ts
+// lib/api/services.ts
+import { apiClient } from "./axios-client";
+import { AxiosRequestConfig } from "axios";
+
+// Auth API với axios
 export const authApi = {
   login: (credentials: LoginCredentials) =>
     apiClient.post<AuthResponse>("/auth/login", credentials),
@@ -207,6 +471,17 @@ export const authApi = {
     apiClient.post("/auth/reset-password", data),
 
   getMe: () => apiClient.get<User>("/users/me"),
+
+  // Advanced auth methods với axios config
+  loginWithRemember: (credentials: LoginCredentials, remember: boolean) =>
+    apiClient.post<AuthResponse>("/auth/login", credentials, {
+      headers: { "X-Remember-Me": remember.toString() },
+    }),
+
+  verifyEmail: (token: string) =>
+    apiClient.post("/auth/verify-email", { token }),
+
+  resendVerification: () => apiClient.post("/auth/resend-verification"),
 };
 
 export const userApi = {
@@ -216,10 +491,32 @@ export const userApi = {
   changePassword: (data: ChangePasswordData) =>
     apiClient.put("/users/me/password", data),
 
-  updateAvatar: (file: File) =>
-    apiClient.uploadFile<User>("/users/me/avatar", file),
+  updateAvatar: (file: File, onProgress?: (progress: number) => void) =>
+    apiClient.uploadFile<User>("/users/me/avatar", file, onProgress),
 
   deleteAvatar: () => apiClient.delete<User>("/users/me/avatar"),
+
+  // Advanced user methods với axios
+  updateProfileWithImage: (data: UpdateUserData, imageFile?: File) => {
+    if (imageFile) {
+      const formData = new FormData();
+      formData.append("data", JSON.stringify(data));
+      formData.append("image", imageFile);
+      return apiClient.put<User>("/users/me", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+    }
+    return apiClient.put<User>("/users/me", data);
+  },
+
+  downloadProfileData: () =>
+    apiClient.downloadFile("/users/me/export", "profile-data.json"),
+
+  getActivityLog: (params?: { page?: number; limit?: number }) =>
+    apiClient.get<PaginatedResponse<UserActivity>>(
+      "/users/me/activity",
+      params
+    ),
 };
 
 export const groupApi = {
@@ -252,6 +549,31 @@ export const groupApi = {
     apiClient.post<Group>("/groups/join", data),
 
   leaveGroup: (id: string) => apiClient.post(`/groups/${id}/leave`),
+
+  // Advanced group methods với axios
+  exportGroupData: (id: string, format: "pdf" | "excel" | "csv") =>
+    apiClient.downloadFile(
+      `/groups/${id}/export?format=${format}`,
+      `group-${id}.${format}`
+    ),
+
+  uploadGroupImage: (
+    id: string,
+    file: File,
+    onProgress?: (progress: number) => void
+  ) => apiClient.uploadFile<Group>(`/groups/${id}/image`, file, onProgress),
+
+  getGroupAnalytics: (id: string, period?: string) =>
+    apiClient.get<GroupAnalytics>(`/groups/${id}/analytics`, { period }),
+
+  bulkInviteMembers: (id: string, emails: string[]) =>
+    apiClient.post(`/groups/${id}/bulk-invite`, { emails }),
+
+  getGroupHistory: (id: string, params?: { page?: number; limit?: number }) =>
+    apiClient.get<PaginatedResponse<GroupHistory>>(
+      `/groups/${id}/history`,
+      params
+    ),
 };
 
 export const expenseApi = {
@@ -271,10 +593,61 @@ export const expenseApi = {
 
   deleteExpense: (id: string) => apiClient.delete(`/expenses/${id}`),
 
-  uploadReceipt: (id: string, file: File) =>
-    apiClient.uploadFile(`/expenses/${id}/upload-receipt`, file),
+  uploadReceipt: (
+    id: string,
+    file: File,
+    onProgress?: (progress: number) => void
+  ) => apiClient.uploadFile(`/expenses/${id}/upload-receipt`, file, onProgress),
 
   deleteReceipt: (id: string) => apiClient.delete(`/expenses/${id}/receipt`),
+
+  // Advanced expense methods với axios
+  createExpenseWithReceipt: (
+    groupId: string,
+    data: CreateExpenseData,
+    receiptFile?: File
+  ) => {
+    if (receiptFile) {
+      const formData = new FormData();
+      formData.append("data", JSON.stringify(data));
+      formData.append("receipt", receiptFile);
+      return apiClient.post<Expense>(`/groups/${groupId}/expenses`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+    }
+    return apiClient.post<Expense>(`/groups/${groupId}/expenses`, data);
+  },
+
+  downloadReceipt: (id: string) =>
+    apiClient.downloadFile(`/expenses/${id}/receipt`, `receipt-${id}.pdf`),
+
+  bulkCreateExpenses: (groupId: string, expenses: CreateExpenseData[]) =>
+    apiClient.post<Expense[]>(`/groups/${groupId}/expenses/bulk`, { expenses }),
+
+  getExpenseAnalytics: (
+    groupId: string,
+    params?: { period?: string; category?: string }
+  ) =>
+    apiClient.get<ExpenseAnalytics>(
+      `/groups/${groupId}/expenses/analytics`,
+      params
+    ),
+
+  exportExpenses: (
+    groupId: string,
+    format: "pdf" | "excel" | "csv",
+    params?: ExpenseQueryParams
+  ) =>
+    apiClient.downloadFile(
+      `/groups/${groupId}/expenses/export?format=${format}`,
+      `expenses.${format}`
+    ),
+
+  duplicateExpense: (id: string) =>
+    apiClient.post<Expense>(`/expenses/${id}/duplicate`),
+
+  getExpenseHistory: (id: string) =>
+    apiClient.get<ExpenseHistory[]>(`/expenses/${id}/history`),
 };
 
 export const settlementApi = {
@@ -296,6 +669,27 @@ export const settlementApi = {
 
   optimizeBalances: (groupId: string) =>
     apiClient.post<Balance[]>(`/groups/${groupId}/optimize-balances`),
+
+  // Advanced settlement methods với axios
+  bulkCreateSettlements: (
+    groupId: string,
+    settlements: CreateSettlementData[]
+  ) =>
+    apiClient.post<Settlement[]>(`/groups/${groupId}/settlements/bulk`, {
+      settlements,
+    }),
+
+  exportSettlements: (groupId: string, format: "pdf" | "excel" | "csv") =>
+    apiClient.downloadFile(
+      `/groups/${groupId}/settlements/export?format=${format}`,
+      `settlements.${format}`
+    ),
+
+  getSettlementHistory: (id: string) =>
+    apiClient.get<SettlementHistory[]>(`/settlements/${id}/history`),
+
+  autoSettle: (groupId: string) =>
+    apiClient.post<Settlement[]>(`/groups/${groupId}/auto-settle`),
 };
 
 export const statisticsApi = {
@@ -325,10 +719,22 @@ export const statisticsApi = {
     format: ExportFormat,
     period?: StatisticsPeriod
   ) =>
-    apiClient.post<{ exportId: string }>(`/groups/${groupId}/export`, {
-      format,
-      period,
+    apiClient.downloadFile(
+      `/groups/${groupId}/stats/export?format=${format}&period=${period}`,
+      `report.${format}`
+    ),
+
+  // Advanced statistics methods với axios
+  getRealTimeStats: (groupId: string) =>
+    apiClient.get<RealTimeStats>(`/groups/${groupId}/stats/realtime`),
+
+  getComparativeStats: (groupId: string, compareWith: string) =>
+    apiClient.get<ComparativeStats>(`/groups/${groupId}/stats/compare`, {
+      compareWith,
     }),
+
+  getTrendAnalysis: (groupId: string, period?: StatisticsPeriod) =>
+    apiClient.get<TrendAnalysis>(`/groups/${groupId}/stats/trends`, { period }),
 };
 
 export const notificationApi = {
@@ -345,15 +751,280 @@ export const notificationApi = {
 
   updatePreferences: (preferences: NotificationPreferences) =>
     apiClient.put("/notifications/preferences", preferences),
+
+  // Advanced notification methods với axios
+  markMultipleAsRead: (ids: string[]) =>
+    apiClient.put("/notifications/mark-multiple-read", { ids }),
+
+  getNotificationStats: () =>
+    apiClient.get<NotificationStats>("/notifications/stats"),
+
+  subscribeToPush: (subscription: PushSubscription) =>
+    apiClient.post("/notifications/push/subscribe", { subscription }),
+
+  unsubscribeFromPush: () =>
+    apiClient.delete("/notifications/push/unsubscribe"),
 };
 ```
 
 **Features:**
 
-- Type-safe API calls
-- Consistent error handling
-- File upload support
-- Query parameter handling
+- **Type-safe API calls**: TypeScript support đầy đủ cho tất cả API methods
+- **Advanced error handling**: Xử lý lỗi thông minh với interceptors và retry logic
+- **File upload với progress**: Upload file với progress tracking và cancel support
+- **File download**: Hỗ trợ download file với blob response
+- **Query parameter handling**: Tự động serialize query parameters
+- **Request/Response transformation**: Tùy chỉnh data transformation
+- **Request cancellation**: Hỗ trợ cancel request với CancelToken
+- **Bulk operations**: Hỗ trợ bulk create, update, delete operations
+- **Export functionality**: Export data với nhiều format (PDF, Excel, CSV)
+- **Real-time features**: Hỗ trợ real-time statistics và notifications
+- **Advanced analytics**: Analytics và trend analysis
+- **Push notifications**: Hỗ trợ push notification subscription
+- **Request queuing**: Queue requests khi refresh token
+- **Automatic retry**: Tự động retry failed requests
+- **Request/Response interceptors**: Tùy chỉnh request và response
+
+### Axios Hooks với React Query (`axiosHooks`)
+
+```typescript
+// lib/api/hooks/useAxiosQuery.ts
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiClient } from "../axios-client";
+import { AxiosError } from "axios";
+
+// Generic query hook với axios
+export const useAxiosQuery = <T>(
+  queryKey: string[],
+  queryFn: () => Promise<T>,
+  options?: {
+    enabled?: boolean;
+    staleTime?: number;
+    cacheTime?: number;
+    retry?: boolean | number;
+  }
+) => {
+  return useQuery({
+    queryKey,
+    queryFn,
+    enabled: options?.enabled ?? true,
+    staleTime: options?.staleTime ?? 5 * 60 * 1000, // 5 minutes
+    cacheTime: options?.cacheTime ?? 10 * 60 * 1000, // 10 minutes
+    retry: options?.retry ?? 3,
+    onError: (error: AxiosError) => {
+      console.error("Query error:", error);
+    },
+  });
+};
+
+// Generic mutation hook với axios
+export const useAxiosMutation = <TData, TVariables>(
+  mutationFn: (variables: TVariables) => Promise<TData>,
+  options?: {
+    onSuccess?: (data: TData, variables: TVariables) => void;
+    onError?: (error: AxiosError, variables: TVariables) => void;
+    invalidateQueries?: string[][];
+  }
+) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn,
+    onSuccess: (data, variables) => {
+      options?.onSuccess?.(data, variables);
+
+      // Invalidate related queries
+      if (options?.invalidateQueries) {
+        options.invalidateQueries.forEach((queryKey) => {
+          queryClient.invalidateQueries({ queryKey });
+        });
+      }
+    },
+    onError: (error: AxiosError, variables) => {
+      console.error("Mutation error:", error);
+      options?.onError?.(error, variables);
+    },
+  });
+};
+
+// Auth hooks
+export const useAuth = () => {
+  const loginMutation = useAxiosMutation(
+    (credentials: LoginCredentials) => authApi.login(credentials),
+    {
+      onSuccess: (data) => {
+        localStorage.setItem("accessToken", data.accessToken);
+        localStorage.setItem("refreshToken", data.refreshToken);
+      },
+      invalidateQueries: [["user"]],
+    }
+  );
+
+  const logoutMutation = useAxiosMutation(() => authApi.logout(), {
+    onSuccess: () => {
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+    },
+    invalidateQueries: [["user"], ["groups"], ["notifications"]],
+  });
+
+  const userQuery = useAxiosQuery(["user"], () => authApi.getMe(), {
+    enabled: !!localStorage.getItem("accessToken"),
+  });
+
+  return {
+    user: userQuery.data,
+    isLoading: userQuery.isLoading,
+    isError: userQuery.isError,
+    login: loginMutation.mutate,
+    logout: logoutMutation.mutate,
+    isLoggingIn: loginMutation.isLoading,
+    isLoggingOut: logoutMutation.isLoading,
+  };
+};
+
+// Group hooks
+export const useGroups = (params?: GroupQueryParams) => {
+  return useAxiosQuery(
+    ["groups", params],
+    () => groupApi.getGroups(params),
+    { staleTime: 2 * 60 * 1000 } // 2 minutes
+  );
+};
+
+export const useGroup = (id: string) => {
+  return useAxiosQuery(["group", id], () => groupApi.getGroup(id), {
+    enabled: !!id,
+  });
+};
+
+export const useCreateGroup = () => {
+  return useAxiosMutation(
+    (data: CreateGroupData) => groupApi.createGroup(data),
+    {
+      invalidateQueries: [["groups"]],
+    }
+  );
+};
+
+// Expense hooks
+export const useExpenses = (groupId: string, params?: ExpenseQueryParams) => {
+  return useAxiosQuery(
+    ["expenses", groupId, params],
+    () => expenseApi.getExpenses(groupId, params),
+    { enabled: !!groupId }
+  );
+};
+
+export const useCreateExpense = () => {
+  return useAxiosMutation(
+    ({ groupId, data }: { groupId: string; data: CreateExpenseData }) =>
+      expenseApi.createExpense(groupId, data),
+    {
+      invalidateQueries: [["expenses"], ["balances"], ["statistics"]],
+    }
+  );
+};
+
+// File upload hook
+export const useFileUpload = () => {
+  return useAxiosMutation(
+    ({
+      endpoint,
+      file,
+      onProgress,
+    }: {
+      endpoint: string;
+      file: File;
+      onProgress?: (progress: number) => void;
+    }) => apiClient.uploadFile(endpoint, file, onProgress),
+    {
+      onError: (error) => {
+        console.error("Upload failed:", error);
+      },
+    }
+  );
+};
+
+// Real-time hooks với polling
+export const useRealTimeStats = (groupId: string) => {
+  return useAxiosQuery(
+    ["stats", "realtime", groupId],
+    () => statisticsApi.getRealTimeStats(groupId),
+    {
+      enabled: !!groupId,
+      refetchInterval: 30000, // 30 seconds
+      staleTime: 0, // Always consider stale
+    }
+  );
+};
+
+// Optimistic updates
+export const useOptimisticExpense = () => {
+  const queryClient = useQueryClient();
+
+  return useAxiosMutation(
+    ({ groupId, data }: { groupId: string; data: CreateExpenseData }) =>
+      expenseApi.createExpense(groupId, data),
+    {
+      onMutate: async ({ groupId, data }) => {
+        // Cancel outgoing refetches
+        await queryClient.cancelQueries({ queryKey: ["expenses", groupId] });
+
+        // Snapshot previous value
+        const previousExpenses = queryClient.getQueryData([
+          "expenses",
+          groupId,
+        ]);
+
+        // Optimistically update
+        const optimisticExpense = {
+          id: `temp-${Date.now()}`,
+          ...data,
+          createdAt: new Date().toISOString(),
+          status: "pending",
+        };
+
+        queryClient.setQueryData(["expenses", groupId], (old: any) => ({
+          ...old,
+          data: [optimisticExpense, ...(old?.data || [])],
+        }));
+
+        return { previousExpenses };
+      },
+      onError: (error, variables, context) => {
+        // Rollback on error
+        if (context?.previousExpenses) {
+          queryClient.setQueryData(
+            ["expenses", variables.groupId],
+            context.previousExpenses
+          );
+        }
+      },
+      onSettled: (data, error, variables) => {
+        // Always refetch after error or success
+        queryClient.invalidateQueries({
+          queryKey: ["expenses", variables.groupId],
+        });
+      },
+    }
+  );
+};
+```
+
+**Features:**
+
+- **React Query integration**: Tích hợp hoàn hảo với React Query
+- **Automatic caching**: Tự động cache và invalidate queries
+- **Optimistic updates**: Cập nhật UI trước khi API response
+- **Real-time polling**: Polling data với configurable intervals
+- **Error handling**: Xử lý lỗi với retry và fallback
+- **Loading states**: Quản lý loading states tự động
+- **Query invalidation**: Tự động invalidate related queries
+- **Type safety**: TypeScript support đầy đủ
+- **Custom hooks**: Hooks tùy chỉnh cho từng feature
+- **Background refetching**: Refetch data trong background
+- **Stale-while-revalidate**: Hiển thị cached data trong khi fetch mới
 
 ## Formatters
 
