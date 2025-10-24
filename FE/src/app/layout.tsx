@@ -13,7 +13,11 @@ export const metadata: Metadata = {
   description: "Ứng dụng chia tiền chi tiêu nhóm du lịch dễ dàng và chính xác",
   keywords: ["chia tiền", "du lịch", "nhóm", "chi tiêu", "công nợ"],
   authors: [{ name: "CuaTienPhuot Team" }],
-  viewport: "width=device-width, initial-scale=1",
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({
