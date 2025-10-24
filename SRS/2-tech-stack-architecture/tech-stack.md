@@ -17,11 +17,12 @@
 ### Frontend
 
 - **Framework**: Next.js 14+ (App Router)
-- **UI Library**: Shadcn/ui
+- **UI Library**: Shadcn/ui + Radix UI
 - **Styling**: TailwindCSS
-- **State Management**: Zustand
+- **State Management**: Zustand + React Query
 - **HTTP Client**: Axios
 - **Form Handling**: React Hook Form + Zod
+- **Form Validation**: Zod schemas với react-hook-form resolver
 - **Charts**: Recharts
 - **Date Handling**: date-fns
 - **Icons**: Lucide React

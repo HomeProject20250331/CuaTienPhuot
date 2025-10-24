@@ -1,77 +1,219 @@
 # Form Components
 
-## Input Components
+## Form Architecture với React Hook Form + Zod
 
-### Text Input (`Input`)
+### Form Validation Strategy
+
+Tất cả form trong ứng dụng sử dụng **React Hook Form** kết hợp với **Zod** để validation:
+
+- **React Hook Form**: Quản lý form state, validation, và performance optimization
+- **Zod**: Schema validation với TypeScript integration
+- **Shadcn/ui**: UI components với built-in form integration
+- **@hookform/resolvers**: Kết nối Zod schemas với React Hook Form
+
+### Form Setup Pattern
 
 ```typescript
-// components/forms/Input.tsx
-interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+// lib/validations/auth.ts
+import { z } from "zod";
+
+export const loginSchema = z.object({
+  email: z.string().email("Email không hợp lệ"),
+  password: z.string().min(6, "Mật khẩu phải có ít nhất 6 ký tự"),
+});
+
+export const registerSchema = z
+  .object({
+    name: z.string().min(2, "Tên phải có ít nhất 2 ký tự"),
+    email: z.string().email("Email không hợp lệ"),
+    password: z.string().min(6, "Mật khẩu phải có ít nhất 6 ký tự"),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Mật khẩu xác nhận không khớp",
+    path: ["confirmPassword"],
+  });
+
+export type LoginFormData = z.infer<typeof loginSchema>;
+export type RegisterFormData = z.infer<typeof registerSchema>;
+```
+
+### Form Component Pattern
+
+```typescript
+// components/forms/LoginForm.tsx
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { loginSchema, type LoginFormData } from "@/lib/validations/auth";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+
+export function LoginForm() {
+  const form = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  const onSubmit = (data: LoginFormData) => {
+    // Handle form submission
+    console.log(data);
+  };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email</FormLabel>
+              <FormControl>
+                <Input
+                  type="email"
+                  placeholder="email@example.com"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Mật khẩu</FormLabel>
+              <FormControl>
+                <Input type="password" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button type="submit" className="w-full">
+          Đăng nhập
+        </Button>
+      </form>
+    </Form>
+  );
+}
+```
+
+## Input Components
+
+### Text Input với React Hook Form
+
+```typescript
+// components/ui/input.tsx (Shadcn/ui component)
+import * as React from "react";
+import { cn } from "@/lib/utils";
+
+export interface InputProps
+  extends React.InputHTMLAttributes<HTMLInputElement> {}
+
+const Input = React.forwardRef<HTMLInputElement, InputProps>(
+  ({ className, type, ...props }, ref) => {
+    return (
+      <input
+        type={type}
+        className={cn(
+          "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+          className
+        )}
+        ref={ref}
+        {...props}
+      />
+    );
+  }
+);
+Input.displayName = "Input";
+
+export { Input };
+```
+
+### Form Input Usage với React Hook Form
+
+```typescript
+// components/forms/FormInput.tsx
+import { forwardRef } from "react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
+
+interface FormInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
   helperText?: string;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
-  variant?: "default" | "filled" | "outlined";
 }
 
-export function Input({
-  label,
-  error,
-  helperText,
-  leftIcon,
-  rightIcon,
-  variant = "default",
-  className,
-  ...props
-}: InputProps) {
-  return (
-    <div className="space-y-2">
-      {label && (
-        <Label htmlFor={props.id} className="text-sm font-medium">
-          {label}
-        </Label>
-      )}
-      <div className="relative">
-        {leftIcon && (
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-            {leftIcon}
-          </div>
+export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
+  (
+    { label, error, helperText, leftIcon, rightIcon, className, ...props },
+    ref
+  ) => {
+    return (
+      <div className="space-y-2">
+        {label && (
+          <Label htmlFor={props.id} className="text-sm font-medium">
+            {label}
+          </Label>
         )}
-        <input
-          className={cn(
-            "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
-            leftIcon && "pl-10",
-            rightIcon && "pr-10",
-            error && "border-destructive focus-visible:ring-destructive",
-            variant === "filled" && "bg-muted",
-            variant === "outlined" && "border-2",
-            className
+        <div className="relative">
+          {leftIcon && (
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+              {leftIcon}
+            </div>
           )}
-          {...props}
-        />
-        {rightIcon && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-            {rightIcon}
-          </div>
+          <Input
+            ref={ref}
+            className={cn(
+              leftIcon && "pl-10",
+              rightIcon && "pr-10",
+              error && "border-destructive focus-visible:ring-destructive",
+              className
+            )}
+            {...props}
+          />
+          {rightIcon && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+              {rightIcon}
+            </div>
+          )}
+        </div>
+        {error && <p className="text-sm text-destructive">{error}</p>}
+        {helperText && !error && (
+          <p className="text-sm text-muted-foreground">{helperText}</p>
         )}
       </div>
-      {error && <p className="text-sm text-destructive">{error}</p>}
-      {helperText && !error && (
-        <p className="text-sm text-muted-foreground">{helperText}</p>
-      )}
-    </div>
-  );
-}
+    );
+  }
+);
+FormInput.displayName = "FormInput";
 ```
 
 **Features:**
 
-- Label và helper text
+- Tích hợp với React Hook Form
+- Shadcn/ui styling
 - Error state với styling
 - Left/right icons
-- Variant styles
 - Accessibility support
+- TypeScript support
 
 ### Textarea (`Textarea`)
 
@@ -674,53 +816,218 @@ export function FileUpload({
 - Upload progress
 - Error handling
 
-## Form Validation
+## Form Validation với React Hook Form + Zod
 
-### Form Field (`FormField`)
+### Shadcn/ui Form Components
 
 ```typescript
-// components/forms/FormField.tsx
-interface FormFieldProps {
-  name: string;
-  label?: string;
-  error?: string;
-  helperText?: string;
-  required?: boolean;
-  children: React.ReactNode;
-}
+// components/ui/form.tsx (Shadcn/ui Form components)
+import * as React from "react";
+import * as LabelPrimitive from "@radix-ui/react-label";
+import { Slot } from "@radix-ui/react-slot";
+import {
+  Controller,
+  ControllerProps,
+  FieldPath,
+  FieldValues,
+  FormProvider,
+  useFormContext,
+} from "react-hook-form";
 
-export function FormField({
-  name,
-  label,
-  error,
-  helperText,
-  required,
-  children,
-}: FormFieldProps) {
+import { cn } from "@/lib/utils";
+import { Label } from "@/components/ui/label";
+
+const Form = FormProvider;
+
+type FormFieldContextValue<
+  TFieldValues extends FieldValues = FieldValues,
+  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
+> = {
+  name: TName;
+};
+
+const FormFieldContext = React.createContext<FormFieldContextValue>(
+  {} as FormFieldContextValue
+);
+
+const FormField = <
+  TFieldValues extends FieldValues = FieldValues,
+  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>
+>({
+  ...props
+}: ControllerProps<TFieldValues, TName>) => {
   return (
-    <div className="space-y-2">
-      {label && (
-        <Label htmlFor={name} className="text-sm font-medium">
-          {label}
-          {required && <span className="text-destructive ml-1">*</span>}
-        </Label>
-      )}
-      {children}
-      {error && <p className="text-sm text-destructive">{error}</p>}
-      {helperText && !error && (
-        <p className="text-sm text-muted-foreground">{helperText}</p>
-      )}
-    </div>
+    <FormFieldContext.Provider value={{ name: props.name }}>
+      <Controller {...props} />
+    </FormFieldContext.Provider>
   );
-}
+};
+
+const useFormField = () => {
+  const fieldContext = React.useContext(FormFieldContext);
+  const itemContext = React.useContext(FormItemContext);
+  const { getFieldState, formState } = useFormContext();
+
+  const fieldState = getFieldState(fieldContext.name, formState);
+
+  if (!fieldContext) {
+    throw new Error("useFormField should be used within <FormField>");
+  }
+
+  const { id } = itemContext;
+
+  return {
+    id,
+    name: fieldContext.name,
+    formItemId: `${id}-form-item`,
+    formDescriptionId: `${id}-form-item-description`,
+    formMessageId: `${id}-form-item-message`,
+    ...fieldState,
+  };
+};
+
+const FormItem = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => {
+  const id = React.useId();
+
+  return (
+    <FormItemContext.Provider value={{ id }}>
+      <div ref={ref} className={cn("space-y-2", className)} {...props} />
+    </FormItemContext.Provider>
+  );
+});
+FormItem.displayName = "FormItem";
+
+const FormLabel = React.forwardRef<
+  React.ElementRef<typeof LabelPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof LabelPrimitive.Root>
+>(({ className, ...props }, ref) => {
+  const { error, formItemId } = useFormField();
+
+  return (
+    <Label
+      ref={ref}
+      className={cn(error && "text-destructive", className)}
+      htmlFor={formItemId}
+      {...props}
+    />
+  );
+});
+FormLabel.displayName = "FormLabel";
+
+const FormControl = React.forwardRef<
+  React.ElementRef<typeof Slot>,
+  React.ComponentPropsWithoutRef<typeof Slot>
+>(({ ...props }, ref) => {
+  const { error, formItemId, formDescriptionId, formMessageId } =
+    useFormField();
+
+  return (
+    <Slot
+      ref={ref}
+      id={formItemId}
+      aria-describedby={
+        !error
+          ? `${formDescriptionId}`
+          : `${formDescriptionId} ${formMessageId}`
+      }
+      aria-invalid={!!error}
+      {...props}
+    />
+  );
+});
+FormControl.displayName = "FormControl";
+
+const FormDescription = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
+>(({ className, ...props }, ref) => {
+  const { formDescriptionId } = useFormField();
+
+  return (
+    <p
+      ref={ref}
+      id={formDescriptionId}
+      className={cn("text-sm text-muted-foreground", className)}
+      {...props}
+    />
+  );
+});
+FormDescription.displayName = "FormDescription";
+
+const FormMessage = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
+>(({ className, children, ...props }, ref) => {
+  const { error, formMessageId } = useFormField();
+  const body = error ? String(error?.message) : children;
+
+  if (!body) {
+    return null;
+  }
+
+  return (
+    <p
+      ref={ref}
+      id={formMessageId}
+      className={cn("text-sm font-medium text-destructive", className)}
+      {...props}
+    >
+      {body}
+    </p>
+  );
+});
+FormMessage.displayName = "FormMessage";
+
+export {
+  useFormField,
+  Form,
+  FormItem,
+  FormLabel,
+  FormControl,
+  FormDescription,
+  FormMessage,
+  FormField,
+};
+```
+
+### Form Validation Schemas
+
+```typescript
+// lib/validations/expense.ts
+import { z } from "zod";
+
+export const createExpenseSchema = z.object({
+  title: z.string().min(1, "Tiêu đề không được để trống"),
+  amount: z.number().min(0.01, "Số tiền phải lớn hơn 0"),
+  description: z.string().optional(),
+  category: z.string().min(1, "Vui lòng chọn danh mục"),
+  date: z.date(),
+  participants: z.array(z.string()).min(1, "Phải có ít nhất 1 người tham gia"),
+  paidBy: z.string().min(1, "Vui lòng chọn người thanh toán"),
+  receipt: z.instanceof(File).optional(),
+});
+
+export const createGroupSchema = z.object({
+  name: z.string().min(1, "Tên nhóm không được để trống"),
+  description: z.string().optional(),
+  currency: z.string().min(1, "Vui lòng chọn đơn vị tiền tệ"),
+  members: z.array(z.string()).min(2, "Nhóm phải có ít nhất 2 thành viên"),
+});
+
+export type CreateExpenseFormData = z.infer<typeof createExpenseSchema>;
+export type CreateGroupFormData = z.infer<typeof createGroupSchema>;
 ```
 
 **Features:**
 
-- Consistent field structure
-- Required field indicator
-- Error state handling
-- Helper text support
+- Type-safe form validation
+- Automatic error handling
+- Real-time validation
+- Custom validation rules
+- Integration với React Hook Form
 
 ### Form Error (`FormError`)
 

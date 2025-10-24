@@ -9,6 +9,7 @@
 - **Styling**: TailwindCSS
 - **State Management**: Zustand + React Query
 - **Form Handling**: React Hook Form + Zod
+- **Form Validation**: Zod schemas với @hookform/resolvers/zod
 - **Charts**: Recharts
 - **Icons**: Lucide React
 - **Date Handling**: date-fns
@@ -38,9 +39,9 @@ src/
 │   ├── layout.tsx
 │   └── page.tsx
 ├── components/                   # Reusable components
-│   ├── ui/                      # Shadcn/ui components
+│   ├── ui/                      # Shadcn/ui components (Button, Input, Form, etc.)
 │   ├── layout/                  # Layout components
-│   ├── forms/                   # Form components
+│   ├── forms/                   # Form components với React Hook Form
 │   ├── data-display/            # Data display components
 │   ├── modals/                  # Modal components
 │   └── notifications/           # Notification components
@@ -85,14 +86,18 @@ src/
 - **Footer**: Footer với links và thông tin
 - **Navigation**: Breadcrumb và navigation helpers
 
-#### 2. Form Components
+#### 2. Form Components (React Hook Form + Zod)
 
-- **Input**: Text input với validation
+- **Input**: Text input với Shadcn/ui styling
 - **Select**: Dropdown select với search
 - **DatePicker**: Date picker component
 - **FileUpload**: File upload với drag & drop
-- **FormField**: Wrapper cho form fields
-- **FormError**: Error display component
+- **FormField**: Shadcn/ui FormField với React Hook Form
+- **FormMessage**: Error display component
+- **Form**: Form wrapper với validation
+- **FormItem**: Form item wrapper
+- **FormLabel**: Form label component
+- **FormControl**: Form control wrapper
 
 #### 3. Data Display Components
 

@@ -62,6 +62,7 @@ Tài liệu Software Requirements Specification (SRS) cho ứng dụng web chia 
 - [Pages Structure](./6-frontend-components/pages-structure.md)
 - [Layout Components](./6-frontend-components/layout-components.md)
 - [Form Components](./6-frontend-components/form-components.md)
+- [Form Validation Examples](./6-frontend-components/form-validation-examples.md)
 - [Data Display Components](./6-frontend-components/data-display-components.md)
 - [Modal Components](./6-frontend-components/modal-components.md)
 - [Notification Components](./6-frontend-components/notification-components.md)
