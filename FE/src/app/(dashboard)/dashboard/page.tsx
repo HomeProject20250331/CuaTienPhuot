@@ -1,3 +1,5 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -6,15 +8,40 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useAuth, useGroups } from "@/lib/api";
 
 export default function DashboardPage() {
+  const { user } = useAuth();
+  const { data: groupsData, isLoading: groupsLoading } = useGroups();
+
+  if (groupsLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-2 text-gray-600">Đang tải...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const groups = groupsData?.data || [];
+  const totalExpenses = groups.reduce(
+    (sum, group) => sum + ((group as any).totalExpenses || 0),
+    0
+  );
+  const activeGroups = groups.filter(
+    (group) => (group as any).status === "active"
+  );
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600">Chào mừng bạn trở lại!</p>
+          <p className="text-gray-600">
+            Chào mừng bạn trở lại, {user?.name || "User"}!
+          </p>
         </div>
         <Button>Tạo nhóm mới</Button>
       </div>
@@ -26,8 +53,10 @@ export default function DashboardPage() {
             <CardTitle className="text-sm font-medium">Tổng nhóm</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">3</div>
-            <p className="text-xs text-muted-foreground">+1 từ tháng trước</p>
+            <div className="text-2xl font-bold">{groups.length}</div>
+            <p className="text-xs text-muted-foreground">
+              {activeGroups.length} đang hoạt động
+            </p>
           </CardContent>
         </Card>
 
@@ -38,8 +67,10 @@ export default function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">2,500,000 VNĐ</div>
-            <p className="text-xs text-muted-foreground">+10% từ tháng trước</p>
+            <div className="text-2xl font-bold">
+              {totalExpenses.toLocaleString()} VNĐ
+            </div>
+            <p className="text-xs text-muted-foreground">tất cả các nhóm</p>
           </CardContent>
         </Card>
 
@@ -48,7 +79,7 @@ export default function DashboardPage() {
             <CardTitle className="text-sm font-medium">Công nợ</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">150,000 VNĐ</div>
+            <div className="text-2xl font-bold">0 VNĐ</div>
             <p className="text-xs text-muted-foreground">Cần thanh toán</p>
           </CardContent>
         </Card>
@@ -63,28 +94,27 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center space-x-4">
-                <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                  <span className="text-primary font-semibold">T</span>
+              {groups.slice(0, 3).map((group) => (
+                <div key={group.id} className="flex items-center space-x-4">
+                  <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                    <span className="text-primary font-semibold">
+                      {group.name.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium">{group.name}</p>
+                    <p className="text-sm text-gray-600">
+                      {group.members?.length || 0} thành viên •{" "}
+                      {(group as any).totalExpenses?.toLocaleString() || 0} VNĐ
+                    </p>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <p className="font-medium">Trip Đà Nẵng</p>
-                  <p className="text-sm text-gray-600">
-                    5 thành viên • 2,500,000 VNĐ
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-4">
-                <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                  <span className="text-primary font-semibold">H</span>
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium">Hà Nội Food Tour</p>
-                  <p className="text-sm text-gray-600">
-                    3 thành viên • 800,000 VNĐ
-                  </p>
-                </div>
-              </div>
+              ))}
+              {groups.length === 0 && (
+                <p className="text-gray-500 text-center py-4">
+                  Chưa có nhóm nào
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -96,26 +126,9 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Ăn tối tại nhà hàng</p>
-                  <p className="text-sm text-gray-600">Trip Đà Nẵng</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-medium">500,000 VNĐ</p>
-                  <p className="text-sm text-gray-600">Hôm qua</p>
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Taxi sân bay</p>
-                  <p className="text-sm text-gray-600">Trip Đà Nẵng</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-medium">200,000 VNĐ</p>
-                  <p className="text-sm text-gray-600">2 ngày trước</p>
-                </div>
-              </div>
+              <p className="text-gray-500 text-center py-4">
+                Chưa có chi tiêu nào
+              </p>
             </div>
           </CardContent>
         </Card>

@@ -1,5 +1,4 @@
-import Footer from "@/components/layout/footer";
-import Header from "@/components/layout/header";
+import { QueryProvider } from "@/lib/api";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
@@ -25,11 +24,11 @@ export default function RootLayout({
   return (
     <html lang="vi">
       <body className={`${inter.variable} font-sans antialiased`}>
-        <div className="min-h-screen flex flex-col">
-          <Header isAuthenticated={false} />
-          <main className="flex-1">{children}</main>
-          <Footer />
-        </div>
+        <QueryProvider>
+          <div className="min-h-screen flex flex-col">
+            <main className="flex-1">{children}</main>
+          </div>
+        </QueryProvider>
       </body>
     </html>
   );

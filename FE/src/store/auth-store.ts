@@ -1,3 +1,4 @@
+import { queryUtils, tokenManager } from "@/lib/api";
 import { AuthState, User } from "@/types/auth";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
@@ -8,6 +9,8 @@ interface AuthStore extends AuthState {
   updateUser: (user: Partial<User>) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
+  clearError: () => void;
+  isLoggedIn: () => boolean;
 }
 
 export const useAuthStore = create<AuthStore>()(
@@ -19,25 +22,28 @@ export const useAuthStore = create<AuthStore>()(
       error: null,
 
       login: (user, accessToken, refreshToken) => {
+        // Store tokens using tokenManager
+        tokenManager.setTokens(accessToken, refreshToken);
+
         set({
           user,
           isAuthenticated: true,
           error: null,
         });
-        // Store tokens in localStorage
-        localStorage.setItem("accessToken", accessToken);
-        localStorage.setItem("refreshToken", refreshToken);
       },
 
       logout: () => {
+        // Clear tokens using tokenManager
+        tokenManager.clearTokens();
+
+        // Clear all React Query cache
+        queryUtils.clearAll();
+
         set({
           user: null,
           isAuthenticated: false,
           error: null,
         });
-        // Clear tokens from localStorage
-        localStorage.removeItem("accessToken");
-        localStorage.removeItem("refreshToken");
       },
 
       updateUser: (userData) => {
@@ -55,6 +61,19 @@ export const useAuthStore = create<AuthStore>()(
 
       setError: (error) => {
         set({ error });
+      },
+
+      clearError: () => {
+        set({ error: null });
+      },
+
+      isLoggedIn: () => {
+        const state = get();
+        return (
+          state.isAuthenticated &&
+          state.user !== null &&
+          tokenManager.isAuthenticated()
+        );
       },
     }),
     {
