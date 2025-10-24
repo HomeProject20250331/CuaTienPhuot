@@ -11,6 +11,7 @@ interface AuthStore extends AuthState {
   setError: (error: string | null) => void;
   clearError: () => void;
   isLoggedIn: () => boolean;
+  initializeAuth: () => void;
 }
 
 export const useAuthStore = create<AuthStore>()(
@@ -75,12 +76,25 @@ export const useAuthStore = create<AuthStore>()(
           tokenManager.isAuthenticated()
         );
       },
+
+      initializeAuth: () => {
+        // Kiểm tra authentication state từ tokenManager sau khi hydrate
+        const isAuth = tokenManager.isAuthenticated();
+        const currentState = get();
+
+        if (isAuth && currentState.user) {
+          set({ isAuthenticated: true });
+        } else if (!isAuth) {
+          set({ isAuthenticated: false, user: null });
+        }
+      },
     }),
     {
       name: "auth-storage",
       partialize: (state) => ({
         user: state.user,
-        isAuthenticated: state.isAuthenticated,
+        // Không persist isAuthenticated để tránh hydration mismatch
+        // isAuthenticated sẽ được tính toán lại từ tokenManager sau khi hydrate
       }),
     }
   )

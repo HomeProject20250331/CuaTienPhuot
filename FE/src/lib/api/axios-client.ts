@@ -86,6 +86,10 @@ class TokenManager {
   }
 
   isAuthenticated(): boolean {
+    // Server-side luôn return false để tránh hydration mismatch
+    if (typeof window === "undefined") {
+      return false;
+    }
     return !!this.getAccessToken();
   }
 }
