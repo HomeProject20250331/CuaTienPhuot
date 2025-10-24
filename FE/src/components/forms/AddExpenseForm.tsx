@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { useCreateExpense } from "@/lib/api/hooks/expenses";
+// import { useCreateExpense } from "@/lib/api/hooks/expenses";
 import {
   createExpenseSchema,
   type CreateExpenseFormData,
@@ -44,7 +44,7 @@ interface AddExpenseFormProps {
 }
 
 export function AddExpenseForm({ groupId, onSuccess }: AddExpenseFormProps) {
-  const createExpenseMutation = useCreateExpense();
+  // const createExpenseMutation = useCreateExpense();
 
   const form = useForm<CreateExpenseFormData>({
     resolver: zodResolver(createExpenseSchema),
@@ -62,21 +62,21 @@ export function AddExpenseForm({ groupId, onSuccess }: AddExpenseFormProps) {
 
   const onSubmit = async (data: CreateExpenseFormData) => {
     try {
-      await createExpenseMutation.mutateAsync({
-        groupId,
-        data: {
-          title: data.title,
-          amount: data.amount,
-          description: data.description,
-          categoryId: data.category,
-          paidByUserId: data.paidBy,
-          participants: data.participants.map((userId) => ({
-            userId,
-            amount: data.amount / data.participants.length, // Equal split for now
-          })),
-          receipt: data.receipt,
-        },
-      });
+      // await createExpenseMutation.mutateAsync({
+      //   groupId,
+      //   data: {
+      //     title: data.title,
+      //     amount: data.amount,
+      //     description: data.description,
+      //     categoryId: data.category,
+      //     paidByUserId: data.paidBy,
+      //     participants: data.participants.map((userId) => ({
+      //       userId,
+      //       amount: data.amount / data.participants.length, // Equal split for now
+      //     })),
+      //     receipt: data.receipt,
+      //   },
+      // });
       onSuccess?.();
     } catch (error) {
       // Error handling được xử lý trong mutation
@@ -250,11 +250,12 @@ export function AddExpenseForm({ groupId, onSuccess }: AddExpenseFormProps) {
         <Button
           type="submit"
           className="w-full"
-          disabled={createExpenseMutation.isPending}
+          // disabled={createExpenseMutation.isPending}
         >
-          {createExpenseMutation.isPending
+          {/* {createExpenseMutation.isPending
             ? "Đang thêm chi tiêu..."
-            : "Thêm chi tiêu"}
+            : "Thêm chi tiêu"} */}
+          Thêm chi tiêu
         </Button>
       </form>
     </Form>

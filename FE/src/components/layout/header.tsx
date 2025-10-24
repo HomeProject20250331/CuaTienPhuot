@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { LogoutButton } from "../auth/LogoutButton";
 
 interface HeaderProps {
   isAuthenticated?: boolean;
@@ -63,9 +64,7 @@ export default function Header({ isAuthenticated = false }: HeaderProps) {
                 <Button variant="ghost" size="sm" asChild>
                   <Link href="/profile">Profile</Link>
                 </Button>
-                <Button variant="outline" size="sm">
-                  Đăng xuất
-                </Button>
+                <LogoutButton />
               </>
             ) : (
               <div className="flex items-center space-x-2">

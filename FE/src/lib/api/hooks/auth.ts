@@ -46,18 +46,40 @@ export interface ChangePasswordRequest {
 }
 
 export interface UpdateProfileRequest {
-  name?: string;
+  fullName?: string;
   phone?: string;
   avatar?: string;
+  preferences?: {
+    language?: "vi" | "en";
+    timezone?: string;
+    currency?: "VND" | "USD" | "EUR";
+    notifications?: {
+      email?: boolean;
+      push?: boolean;
+      sms?: boolean;
+    };
+  };
 }
 
 export interface User {
   id: string;
-  name: string;
   email: string;
+  fullName: string;
   phone?: string;
   avatar?: string;
+  avatarThumbnail?: string;
   isEmailVerified: boolean;
+  lastLoginAt?: string;
+  preferences?: {
+    language: "vi" | "en";
+    timezone: string;
+    currency: "VND" | "USD" | "EUR";
+    notifications: {
+      email: boolean;
+      push: boolean;
+      sms: boolean;
+    };
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -98,7 +120,7 @@ const authApi = {
   getCurrentUser: async (): Promise<ApiResponse<User>> => {
     const client = apiClient;
     const response = await client.get<ApiResponse<User>>(
-      API_CONFIG.ENDPOINTS.AUTH.ME
+      API_CONFIG.ENDPOINTS.USERS.PROFILE
     );
     return response.data;
   },
@@ -337,15 +359,6 @@ export function useAuth() {
 
     initAuth();
   }, []);
-
-  // Debug logging
-  if (typeof window !== "undefined") {
-    console.log("useAuth debug:", {
-      user,
-      isAuthenticated,
-      isLoading,
-    });
-  }
 
   return {
     user,

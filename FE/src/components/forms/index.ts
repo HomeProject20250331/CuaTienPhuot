@@ -15,3 +15,8 @@ export { EditGroupForm } from "./EditGroupForm";
 // Expense Management Forms
 export { AddExpenseForm } from "./AddExpenseForm";
 export { EditExpenseForm } from "./EditExpenseForm";
+
+// Profile Management Forms
+export { AvatarUpload } from "./AvatarUpload";
+export { ChangePasswordForm } from "./ChangePasswordForm";
+export { EditProfileForm } from "./EditProfileForm";

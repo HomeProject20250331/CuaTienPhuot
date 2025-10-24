@@ -2,7 +2,9 @@
 
 import Footer from "@/components/layout/footer";
 import Header from "@/components/layout/header";
+import { ROUTES } from "@/constants/routes";
 import { useAuth } from "@/lib/api/hooks/auth";
+import { redirect } from "next/navigation";
 
 export default function DashboardLayout({
   children,
@@ -11,7 +13,9 @@ export default function DashboardLayout({
 }) {
   const { user, isAuthenticated, isLoading } = useAuth();
 
-  console.log("Auth state:", { user, isAuthenticated, isLoading });
+  if (!user && !isLoading) {
+    redirect(ROUTES.AUTH.LOGIN);
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -19,8 +23,9 @@ export default function DashboardLayout({
       <Header isAuthenticated={true} />
 
       {/* Main Content */}
-      <main className="flex-1 container mx-auto px-4 py-6">{children}</main>
-
+      <main className="flex-1 container mx-auto px-4 py-6">
+        {isLoading ? <div>Đang tải...</div> : children}
+      </main>
       {/* Footer */}
       <Footer />
     </div>

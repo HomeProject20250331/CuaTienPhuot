@@ -16,8 +16,7 @@
   _id: ObjectId,
   email: String, // unique, required
   password: String, // hashed with bcrypt, required
-  firstName: String, // required
-  lastName: String, // required
+  fullName: String, // required
   avatar: String, // URL to avatar image
   phone: String, // optional
   dateOfBirth: Date, // optional
@@ -342,7 +341,7 @@
 
 - Email phải unique và valid format
 - Password tối thiểu 8 ký tự, có ít nhất 1 chữ hoa, 1 chữ thường, 1 số
-- FirstName và LastName không được rỗng
+- FullName không được rỗng
 
 ### 3.5.2 Group Validation
 

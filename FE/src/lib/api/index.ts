@@ -12,8 +12,8 @@ export { queryClient, queryKeys, queryUtils } from "./query-client";
 export { QueryProvider } from "./query-provider";
 
 // Axios client và utilities
+export type { ApiResponse, PaginatedResponse } from "../../types/api";
 export { apiClient, apiUtils, tokenManager } from "./axios-client";
-export type { ApiResponse, PaginationResponse } from "./axios-client";
 
 // Export all React Query hooks
 export * from "./hooks";

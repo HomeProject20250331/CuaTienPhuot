@@ -19,13 +19,13 @@ interface ApiResponse<T = any> {
   message?: string;
   error?: {
     code: string;
-    message: string;
-    details?: string;
+    details: string;
   };
   timestamp: string;
+  path: string;
 }
 
-interface PaginationResponse<T = any> extends ApiResponse<T[]> {
+interface PaginatedResponse<T = any> extends ApiResponse<T[]> {
   pagination?: {
     page: number;
     limit: number;
@@ -110,21 +110,9 @@ const createAxiosInstance = (): AxiosInstance => {
         config.headers.Authorization = `Bearer ${token}`;
       }
 
-      // Log request in development
-      if (process.env.NODE_ENV === "development") {
-        console.log(
-          `🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`,
-          {
-            data: config.data,
-            params: config.params,
-          }
-        );
-      }
-
       return config;
     },
     (error) => {
-      console.warn("❌ Request Error:", error);
       return Promise.reject(error);
     }
   );
@@ -132,29 +120,12 @@ const createAxiosInstance = (): AxiosInstance => {
   // Response interceptor
   instance.interceptors.response.use(
     (response: AxiosResponse<ApiResponse>) => {
-      // Log response in development
-      if (process.env.NODE_ENV === "development") {
-        console.log(`✅ API Response: ${response.config.url}`, {
-          status: response.status,
-          data: response.data,
-        });
-      }
-
       return response;
     },
     async (error: AxiosError<ApiResponse>) => {
       const originalRequest = error.config as AxiosRequestConfig & {
         _retry?: boolean;
       };
-
-      // Log error in development
-      if (process.env.NODE_ENV === "development") {
-        console.warn(`❌ API Error: ${originalRequest?.url}`, {
-          status: error.response?.status,
-          data: error.response?.data,
-          message: error.message,
-        });
-      }
 
       // Handle 401 Unauthorized
       if (error.response?.status === 401 && !originalRequest._retry) {
@@ -210,7 +181,7 @@ export const apiClient = createAxiosInstance();
 export const tokenManager = TokenManager.getInstance();
 
 // Export types
-export type { ApiResponse, PaginationResponse };
+export type { ApiResponse, PaginatedResponse };
 
 // Utility functions
 export const apiUtils = {

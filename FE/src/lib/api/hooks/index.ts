@@ -8,8 +8,8 @@ export { queryClient, queryKeys, queryUtils } from "../query-client";
 export { QueryProvider } from "../query-provider";
 
 // Axios client và utilities
+export type { ApiResponse, PaginatedResponse } from "../../../types/api";
 export { apiClient, apiUtils, tokenManager } from "../axios-client";
-export type { ApiResponse, PaginationResponse } from "../axios-client";
 
 // Auth hooks (Legacy - consider migrating to Server Actions)
 export {
@@ -43,7 +43,6 @@ export {
   useGroup,
   useGroupMembers,
   useGroups,
-  useInviteLink,
   useLeaveGroup,
   useRemoveMember,
   useUpdateGroup,
@@ -63,7 +62,7 @@ export type {
 
 // Expenses hooks
 export {
-  useCreateExpense,
+  // useCreateExpense,
   useCreateExpenseCategory,
   useDeleteExpense,
   useDeleteExpenseCategory,

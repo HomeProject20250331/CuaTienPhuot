@@ -4,7 +4,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ApiResponse, PaginationResponse } from "../axios-client";
+import type { ApiResponse, PaginatedResponse } from "../../../types/api";
 import { apiClient } from "../axios-client";
 import { API_CONFIG } from "../config";
 import { queryKeys } from "../query-client";
@@ -105,8 +105,8 @@ const settlementsApi = {
       status?: "pending" | "paid" | "cancelled";
       userId?: string;
     }
-  ): Promise<PaginationResponse<Settlement>> => {
-    const response = await apiClient.get<PaginationResponse<Settlement>>(
+  ): Promise<PaginatedResponse<Settlement>> => {
+    const response = await apiClient.get<PaginatedResponse<Settlement>>(
       API_CONFIG.ENDPOINTS.SETTLEMENTS.LIST(groupId),
       { params }
     );

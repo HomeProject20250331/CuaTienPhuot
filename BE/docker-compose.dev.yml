@@ -1,0 +1,42 @@
+version: "3.8"
+
+services:
+  # MongoDB Database cho Development
+  mongodb-dev:
+    image: mongo:7.0
+    container_name: cuatienphuot-mongodb-dev
+    restart: unless-stopped
+    ports:
+      - "27020:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+      MONGO_INITDB_DATABASE: cuatienphuot_dev
+    volumes:
+      - mongodb_dev_data:/data/db
+      - ./docker/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - cuatienphuot-dev-network
+
+  # Redis Cache cho Development
+  redis-dev:
+    image: redis:7.2-alpine
+    container_name: cuatienphuot-redis-dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_dev_data:/data
+    networks:
+      - cuatienphuot-dev-network
+
+volumes:
+  mongodb_dev_data:
+    driver: local
+  redis_dev_data:
+    driver: local
+
+networks:
+  cuatienphuot-dev-network:
+    driver: bridge

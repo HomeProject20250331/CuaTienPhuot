@@ -4,7 +4,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ApiResponse, PaginationResponse } from "../axios-client";
+import type { ApiResponse, PaginatedResponse } from "../../../types/api";
 import { apiClient } from "../axios-client";
 import { API_CONFIG } from "../config";
 import { queryKeys } from "../query-client";
@@ -76,8 +76,8 @@ const notificationsApi = {
     isRead?: boolean;
     category?: string;
     type?: string;
-  }): Promise<PaginationResponse<Notification>> => {
-    const response = await apiClient.get<PaginationResponse<Notification>>(
+  }): Promise<PaginatedResponse<Notification>> => {
+    const response = await apiClient.get<PaginatedResponse<Notification>>(
       API_CONFIG.ENDPOINTS.NOTIFICATIONS.LIST,
       { params }
     );
@@ -185,7 +185,7 @@ export function useMarkNotificationAsRead() {
         // Update notification in cache
         queryClient.setQueryData(
           [...queryKeys.notifications.all],
-          (oldData: PaginationResponse<Notification> | undefined) => {
+          (oldData: PaginatedResponse<Notification> | undefined) => {
             if (!oldData?.data) return oldData;
 
             return {
@@ -225,7 +225,7 @@ export function useMarkAllNotificationsAsRead() {
         // Update all notifications in cache
         queryClient.setQueryData(
           [...queryKeys.notifications.all],
-          (oldData: PaginationResponse<Notification> | undefined) => {
+          (oldData: PaginatedResponse<Notification> | undefined) => {
             if (!oldData?.data) return oldData;
 
             return {
@@ -261,7 +261,7 @@ export function useDeleteNotification() {
         // Remove notification from cache
         queryClient.setQueryData(
           [...queryKeys.notifications.all],
-          (oldData: PaginationResponse<Notification> | undefined) => {
+          (oldData: PaginatedResponse<Notification> | undefined) => {
             if (!oldData?.data) return oldData;
 
             return {

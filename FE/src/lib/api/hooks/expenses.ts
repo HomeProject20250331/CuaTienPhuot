@@ -4,33 +4,39 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ApiResponse, PaginationResponse } from "../axios-client";
+import type { ApiResponse, PaginatedResponse } from "../axios-client";
 import { apiClient } from "../axios-client";
 import { API_CONFIG } from "../config";
 import { queryKeys } from "../query-client";
 
 // Types
 export interface Expense {
-  id: string;
+  _id: string;
   groupId: string;
   title: string;
   description?: string;
   amount: number;
   currency: string;
-  category: ExpenseCategory;
+  category: string;
   paidBy: {
     id: string;
-    name: string;
-    email: string;
+    fullName: string;
     avatar?: string;
+    email?: string;
   };
   participants: ExpenseParticipant[];
+  expenseDate: string;
+  location?: string;
+  tags?: string[];
   receipt?: {
-    id: string;
     url: string;
-    filename: string;
+    thumbnail?: string;
     uploadedAt: string;
+    fileSize?: number;
+    mimeType?: string;
   };
+  status: string;
+  createdBy: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -47,24 +53,30 @@ export interface ExpenseParticipant {
   userId: string;
   user: {
     id: string;
-    name: string;
-    email: string;
+    fullName: string;
     avatar?: string;
+    email?: string;
   };
   amount: number;
-  isPaid: boolean;
+  share: number;
+  isPaid?: boolean;
+  paidAt?: string;
 }
 
 export interface CreateExpenseRequest {
   title: string;
   description?: string;
   amount: number;
-  categoryId: string;
-  paidByUserId: string;
+  currency: string;
+  category: string;
+  paidBy: string;
   participants: {
     userId: string;
     amount: number;
   }[];
+  expenseDate?: string;
+  location?: string;
+  tags?: string[];
   receipt?: File;
 }
 
@@ -72,12 +84,15 @@ export interface UpdateExpenseRequest {
   title?: string;
   description?: string;
   amount?: number;
-  categoryId?: string;
-  paidByUserId?: string;
+  category?: string;
+  paidBy?: string;
   participants?: {
     userId: string;
     amount: number;
   }[];
+  expenseDate?: string;
+  location?: string;
+  tags?: string[];
 }
 
 export interface CreateExpenseCategoryRequest {
@@ -107,8 +122,8 @@ const expensesApi = {
       dateFrom?: string;
       dateTo?: string;
     }
-  ): Promise<PaginationResponse<Expense>> => {
-    const response = await apiClient.get<PaginationResponse<Expense>>(
+  ): Promise<PaginatedResponse<Expense>> => {
+    const response = await apiClient.get<PaginatedResponse<Expense>>(
       API_CONFIG.ENDPOINTS.EXPENSES.LIST(groupId),
       { params }
     );
@@ -121,42 +136,42 @@ const expensesApi = {
     expenseId: string
   ): Promise<ApiResponse<Expense>> => {
     const response = await apiClient.get<ApiResponse<Expense>>(
-      API_CONFIG.ENDPOINTS.EXPENSES.DETAIL(groupId, expenseId)
+      API_CONFIG.ENDPOINTS.EXPENSES.DETAIL(expenseId)
     );
     return response.data;
   },
 
   // Create expense
-  createExpense: async (
-    groupId: string,
-    data: CreateExpenseRequest
-  ): Promise<ApiResponse<Expense>> => {
-    const formData = new FormData();
-    formData.append("title", data.title);
-    formData.append("amount", data.amount.toString());
-    formData.append("categoryId", data.categoryId);
-    formData.append("paidByUserId", data.paidByUserId);
-    formData.append("participants", JSON.stringify(data.participants));
+  // createExpense: async (
+  //   groupId: string,
+  //   data: CreateExpenseRequest
+  // ): Promise<ApiResponse<Expense>> => {
+  //   const formData = new FormData();
+  //   formData.append("title", data.title);
+  //   formData.append("amount", data.amount.toString());
+  //   formData.append("categoryId", data.categoryId);
+  //   formData.append("paidByUserId", data.paidByUserId);
+  //   formData.append("participants", JSON.stringify(data.participants));
 
-    if (data.description) {
-      formData.append("description", data.description);
-    }
+  //   if (data.description) {
+  //     formData.append("description", data.description);
+  //   }
 
-    if (data.receipt) {
-      formData.append("receipt", data.receipt);
-    }
+  //   if (data.receipt) {
+  //     formData.append("receipt", data.receipt);
+  //   }
 
-    const response = await apiClient.post<ApiResponse<Expense>>(
-      API_CONFIG.ENDPOINTS.EXPENSES.CREATE(groupId),
-      formData,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      }
-    );
-    return response.data;
-  },
+  //   const response = await apiClient.post<ApiResponse<Expense>>(
+  //     API_CONFIG.ENDPOINTS.EXPENSES.CREATE(groupId),
+  //     formData,
+  //     {
+  //       headers: {
+  //         "Content-Type": "multipart/form-data",
+  //       },
+  //     }
+  //   );
+  //   return response.data;
+  // },
 
   // Update expense
   updateExpense: async (
@@ -165,7 +180,7 @@ const expensesApi = {
     data: UpdateExpenseRequest
   ): Promise<ApiResponse<Expense>> => {
     const response = await apiClient.put<ApiResponse<Expense>>(
-      API_CONFIG.ENDPOINTS.EXPENSES.UPDATE(groupId, expenseId),
+      API_CONFIG.ENDPOINTS.EXPENSES.UPDATE(expenseId),
       data
     );
     return response.data;
@@ -177,7 +192,7 @@ const expensesApi = {
     expenseId: string
   ): Promise<ApiResponse<void>> => {
     const response = await apiClient.delete<ApiResponse<void>>(
-      API_CONFIG.ENDPOINTS.EXPENSES.DELETE(groupId, expenseId)
+      API_CONFIG.ENDPOINTS.EXPENSES.DELETE(expenseId)
     );
     return response.data;
   },
@@ -192,7 +207,7 @@ const expensesApi = {
     formData.append("receipt", file);
 
     const response = await apiClient.post<ApiResponse<{ url: string }>>(
-      `${API_CONFIG.ENDPOINTS.EXPENSES.DETAIL(groupId, expenseId)}/receipt`,
+      `${API_CONFIG.ENDPOINTS.EXPENSES.DETAIL(expenseId)}/receipt`,
       formData,
       {
         headers: {
@@ -290,40 +305,40 @@ export function useExpenseCategories(groupId: string) {
   });
 }
 
-export function useCreateExpense() {
-  const queryClient = useQueryClient();
+// export function useCreateExpense() {
+//   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: ({
-      groupId,
-      data,
-    }: {
-      groupId: string;
-      data: CreateExpenseRequest;
-    }) => expensesApi.createExpense(groupId, data),
-    onSuccess: (response, variables) => {
-      if (response.success) {
-        // Invalidate expenses list
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.expenses.byGroup(variables.groupId),
-        });
+//   return useMutation({
+//     mutationFn: ({
+//       groupId,
+//       data,
+//     }: {
+//       groupId: string;
+//       data: CreateExpenseRequest;
+//     }) => expensesApi.createExpense(groupId, data),
+//     onSuccess: (response, variables) => {
+//       if (response.success) {
+//         // Invalidate expenses list
+//         queryClient.invalidateQueries({
+//           queryKey: queryKeys.expenses.byGroup(variables.groupId),
+//         });
 
-        // Invalidate group balances
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.groups.balances(variables.groupId),
-        });
+//         // Invalidate group balances
+//         queryClient.invalidateQueries({
+//           queryKey: queryKeys.groups.balances(variables.groupId),
+//         });
 
-        // Invalidate group stats
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.groups.stats(variables.groupId),
-        });
-      }
-    },
-    onError: (error) => {
-      console.error("Create expense failed:", error);
-    },
-  });
-}
+//         // Invalidate group stats
+//         queryClient.invalidateQueries({
+//           queryKey: queryKeys.groups.stats(variables.groupId),
+//         });
+//       }
+//     },
+//     onError: (error) => {
+//       console.error("Create expense failed:", error);
+//     },
+//   });
+// }
 
 export function useUpdateExpense() {
   const queryClient = useQueryClient();

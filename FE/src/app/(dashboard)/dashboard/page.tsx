@@ -19,13 +19,13 @@ export default function DashboardPage() {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-2 text-gray-600">Đang tải...</p>
+          <p className="mt-2 text-foreground">Đang tải...</p>
         </div>
       </div>
     );
   }
 
-  const groups = groupsData?.data || [];
+  const groups = groupsData?.data ?? [];
   const totalExpenses = groups.reduce(
     (sum, group) => sum + ((group as any).totalExpenses || 0),
     0
@@ -39,7 +39,7 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600">
+          <p className="text-foreground">
             Chào mừng bạn trở lại, {user?.name || "User"}!
           </p>
         </div>
@@ -95,7 +95,7 @@ export default function DashboardPage() {
           <CardContent>
             <div className="space-y-4">
               {groups.slice(0, 3).map((group) => (
-                <div key={group.id} className="flex items-center space-x-4">
+                <div key={group._id} className="flex items-center space-x-4">
                   <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
                     <span className="text-primary font-semibold">
                       {group.name.charAt(0).toUpperCase()}
@@ -103,7 +103,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="flex-1">
                     <p className="font-medium">{group.name}</p>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-foreground">
                       {group.members?.length || 0} thành viên •{" "}
                       {(group as any).totalExpenses?.toLocaleString() || 0} VNĐ
                     </p>
@@ -111,7 +111,7 @@ export default function DashboardPage() {
                 </div>
               ))}
               {groups.length === 0 && (
-                <p className="text-gray-500 text-center py-4">
+                <p className="text-foreground text-center py-4">
                   Chưa có nhóm nào
                 </p>
               )}
@@ -126,7 +126,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <p className="text-gray-500 text-center py-4">
+              <p className="text-foreground text-center py-4">
                 Chưa có chi tiêu nào
               </p>
             </div>

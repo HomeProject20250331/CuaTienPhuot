@@ -4,8 +4,13 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Group, GroupMember, GroupSettings } from "../../../types/api";
-import type { ApiResponse, PaginationResponse } from "../axios-client";
+import type {
+  ApiResponse,
+  Group,
+  GroupMember,
+  GroupSettings,
+  PaginatedResponse,
+} from "../../../types/api";
 import { apiClient } from "../axios-client";
 import { API_CONFIG } from "../config";
 import { queryKeys, queryUtils } from "../query-client";
@@ -57,8 +62,8 @@ const groupsApi = {
     limit?: number;
     sort?: string;
     order?: "asc" | "desc";
-  }): Promise<PaginationResponse<Group>> => {
-    const response = await apiClient.get<PaginationResponse<Group>>(
+  }): Promise<PaginatedResponse<Group>> => {
+    const response = await apiClient.get<PaginatedResponse<Group>>(
       API_CONFIG.ENDPOINTS.GROUPS.LIST,
       { params }
     );
@@ -135,14 +140,6 @@ const groupsApi = {
     return response.data;
   },
 
-  // Get invite link
-  getInviteLink: async (id: string): Promise<ApiResponse<GroupInviteLink>> => {
-    const response = await apiClient.get<ApiResponse<GroupInviteLink>>(
-      API_CONFIG.ENDPOINTS.GROUPS.INVITE(id)
-    );
-    return response.data;
-  },
-
   // Update group settings
   updateGroupSettings: async (
     id: string,
@@ -209,7 +206,7 @@ export function useCreateGroup() {
         // Add new group to cache
         if (response.data) {
           queryClient.setQueryData(
-            queryKeys.groups.detail(response.data.id),
+            queryKeys.groups.detail(response.data._id),
             response
           );
         }
@@ -319,15 +316,6 @@ export function useRemoveMember() {
     onError: (error) => {
       console.error("Remove member failed:", error);
     },
-  });
-}
-
-export function useInviteLink(groupId: string) {
-  return useQuery({
-    queryKey: [...queryKeys.groups.detail(groupId), "invite-link"],
-    queryFn: () => groupsApi.getInviteLink(groupId),
-    enabled: !!groupId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
 

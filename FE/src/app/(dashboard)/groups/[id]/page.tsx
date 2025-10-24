@@ -24,6 +24,7 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 
 const statusColors = {
   active: "bg-green-100 text-green-800",
@@ -36,15 +37,11 @@ const roleColors = {
   member: "bg-blue-100 text-blue-800",
 };
 
-export default function GroupDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
-  const { data: groupData, isLoading: groupLoading } = useGroup(params.id);
-  const { data: membersData, isLoading: membersLoading } = useGroupMembers(
-    params.id
-  );
+export default function GroupDetailPage() {
+  const params = useParams<{ id: string }>();
+  const { id } = params;
+  const { data: groupData, isLoading: groupLoading } = useGroup(id);
+  const { data: membersData, isLoading: membersLoading } = useGroupMembers(id);
 
   if (groupLoading || membersLoading) {
     return (
@@ -162,7 +159,7 @@ export default function GroupDetailPage({
               {new Date(group.createdAt).toLocaleDateString("vi-VN")}
             </div>
             <p className="text-xs text-muted-foreground">
-              bởi {group.createdBy || "Unknown"}
+              bởi {group.createdBy?.fullName || "Không xác định"}
             </p>
           </CardContent>
         </Card>
@@ -174,25 +171,25 @@ export default function GroupDetailPage({
           Tổng quan
         </Button>
         <Button variant="ghost" size="sm" asChild className="flex-1">
-          <Link href={ROUTES.GROUPS.EXPENSES(group.id)}>
+          <Link href={ROUTES.GROUPS.EXPENSES(group._id)}>
             <Receipt className="w-4 h-4 mr-2" />
             Chi tiêu
           </Link>
         </Button>
         <Button variant="ghost" size="sm" asChild className="flex-1">
-          <Link href={ROUTES.GROUPS.BALANCES(group.id)}>
+          <Link href={ROUTES.GROUPS.BALANCES(group._id)}>
             <CreditCard className="w-4 h-4 mr-2" />
             Cân bằng
           </Link>
         </Button>
         <Button variant="ghost" size="sm" asChild className="flex-1">
-          <Link href={ROUTES.GROUPS.STATS(group.id)}>
+          <Link href={ROUTES.GROUPS.STATS(group._id)}>
             <BarChart3 className="w-4 h-4 mr-2" />
             Thống kê
           </Link>
         </Button>
         <Button variant="ghost" size="sm" asChild className="flex-1">
-          <Link href={ROUTES.GROUPS.SETTINGS(group.id)}>
+          <Link href={ROUTES.GROUPS.SETTINGS(group._id)}>
             <Settings className="w-4 h-4 mr-2" />
             Cài đặt
           </Link>
@@ -217,20 +214,18 @@ export default function GroupDetailPage({
             <div className="space-y-3">
               {members.map((member) => (
                 <div
-                  key={member.id}
+                  key={member._id}
                   className="flex items-center justify-between p-3 border rounded-lg"
                 >
                   <div className="flex items-center space-x-3">
                     <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
                       <span className="text-primary font-semibold text-sm">
-                        {member.user.name.charAt(0)}
+                        {member?.fullName?.charAt(0)}
                       </span>
                     </div>
                     <div>
-                      <p className="font-medium">{member.user.name}</p>
-                      <p className="text-sm text-gray-600">
-                        {member.user.email}
-                      </p>
+                      <p className="font-medium">{member.fullName}</p>
+                      <p className="text-sm text-gray-600">{member.email}</p>
                     </div>
                   </div>
                   <div className="text-right">
@@ -255,7 +250,7 @@ export default function GroupDetailPage({
             <div className="flex items-center justify-between">
               <CardTitle>Chi tiêu gần đây</CardTitle>
               <Button variant="outline" size="sm" asChild>
-                <Link href={ROUTES.GROUPS.EXPENSES(group.id)}>Xem tất cả</Link>
+                <Link href={ROUTES.GROUPS.EXPENSES(group._id)}>Xem tất cả</Link>
               </Button>
             </div>
             <CardDescription>Các giao dịch mới nhất</CardDescription>

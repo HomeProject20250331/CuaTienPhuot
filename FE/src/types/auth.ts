@@ -1,10 +1,22 @@
 export interface User {
   id: string;
   email: string;
-  name: string;
+  fullName: string;
   avatar?: string;
+  avatarThumbnail?: string;
   phone?: string;
   isEmailVerified: boolean;
+  lastLoginAt?: string;
+  preferences?: {
+    language: "vi" | "en";
+    timezone: string;
+    currency: "VND" | "USD" | "EUR";
+    notifications: {
+      email: boolean;
+      push: boolean;
+      sms: boolean;
+    };
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -15,10 +27,11 @@ export interface LoginRequest {
 }
 
 export interface RegisterRequest {
-  name: string;
+  fullName: string;
   email: string;
   password: string;
   confirmPassword: string;
+  phone?: string;
 }
 
 export interface AuthResponse {

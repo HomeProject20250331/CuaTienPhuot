@@ -20,6 +20,7 @@ import {
   User,
 } from "lucide-react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 
 const statusColors = {
   pending: "bg-yellow-100 text-yellow-800",
@@ -35,11 +36,8 @@ const categoryColors = {
   "Giải trí": "bg-green-100 text-green-800",
 };
 
-export default function GroupExpensesPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default function GroupExpensesPage() {
+  const params = useParams<{ id: string }>();
   const { data: expensesData, isLoading: expensesLoading } = useExpenses(
     params.id
   );
@@ -210,7 +208,7 @@ export default function GroupExpensesPage({
         <div className="space-y-4">
           {expenses.map((expense) => (
             <Card
-              key={expense.id}
+              key={expense._id}
               className="hover:shadow-md transition-shadow"
             >
               <CardContent className="p-6">
@@ -256,7 +254,7 @@ export default function GroupExpensesPage({
                       </div>
                       <div className="flex items-center space-x-2">
                         <User className="w-4 h-4 text-gray-400" />
-                        <span>Thanh toán: {expense.paidBy.name}</span>
+                        <span>Thanh toán: {expense.paidBy.fullName}</span>
                       </div>
                       <div className="flex items-center space-x-2">
                         <Calendar className="w-4 h-4 text-gray-400" />

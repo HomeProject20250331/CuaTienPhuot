@@ -1,0 +1,92 @@
+version: "3.8"
+
+services:
+  # MongoDB Database cho Production
+  mongodb-prod:
+    image: mongo:7.0
+    container_name: cuatienphuot-mongodb-prod
+    restart: unless-stopped
+    ports:
+      - "27021:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+      MONGO_INITDB_DATABASE: cuatienphuot_prod
+    volumes:
+      - mongodb_prod_data:/data/db
+      - ./docker/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - cuatienphuot-prod-network
+
+  # Redis Cache cho Production
+  redis-prod:
+    image: redis:7.2-alpine
+    container_name: cuatienphuot-redis-prod
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_prod_data:/data
+    networks:
+      - cuatienphuot-prod-network
+
+  # Backend API cho Production
+  backend-prod:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cuatienphuot-backend-prod
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      MONGODB_URI: mongodb://admin:admin123@mongodb-prod:27017/cuatienphuot_prod?authSource=admin
+      REDIS_HOST: redis-prod
+      REDIS_PORT: 6379
+      JWT_SECRET: your-super-secret-jwt-key-here
+      JWT_EXPIRES_IN: 1h
+      JWT_REFRESH_SECRET: your-super-secret-refresh-key-here
+      JWT_REFRESH_EXPIRES_IN: 7d
+      API_PREFIX: api/v1
+      CORS_ORIGIN: http://localhost:3000
+      CORS_CREDENTIALS: true
+      BCRYPT_ROUNDS: 12
+      SESSION_SECRET: your-session-secret-here
+      THROTTLE_TTL: 60
+      THROTTLE_LIMIT: 100
+    volumes:
+      - ./uploads:/app/uploads
+    depends_on:
+      - mongodb-prod
+      - redis-prod
+    networks:
+      - cuatienphuot-prod-network
+
+  # Nginx Reverse Proxy cho Production
+  nginx-prod:
+    image: nginx:alpine
+    container_name: cuatienphuot-nginx-prod
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - backend-prod
+    networks:
+      - cuatienphuot-prod-network
+
+volumes:
+  mongodb_prod_data:
+    driver: local
+  redis_prod_data:
+    driver: local
+
+networks:
+  cuatienphuot-prod-network:
+    driver: bridge

@@ -118,7 +118,7 @@ export default function GroupsPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {groups.map((group) => (
-            <Card key={group.id} className="hover:shadow-lg transition-shadow">
+            <Card key={group._id} className="hover:shadow-lg transition-shadow">
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
@@ -159,8 +159,8 @@ export default function GroupsPage() {
                   </div>
                 </div>
 
-                <div className="text-sm text-gray-600">
-                  <p>Tạo bởi: {(group as any).createdBy || "Unknown"}</p>
+                <div className="text-sm text-foreground">
+                  <p>Tạo bởi: {group.createdBy?.fullName || "Unknown"}</p>
                   <p>
                     Tạo ngày:{" "}
                     {new Date(group.createdAt).toLocaleDateString("vi-VN")}
@@ -169,7 +169,7 @@ export default function GroupsPage() {
 
                 <div className="flex space-x-2">
                   <Button asChild className="flex-1">
-                    <Link href={ROUTES.GROUPS.DETAIL(group.id)}>
+                    <Link href={ROUTES.GROUPS.DETAIL(group._id)}>
                       Xem chi tiết
                     </Link>
                   </Button>

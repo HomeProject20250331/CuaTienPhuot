@@ -10,11 +10,13 @@ import { User } from "./auth";
  */
 export interface ApiResponse<T = any> {
   success: boolean;
-  message: string;
   data?: T;
+  message?: string;
+  timestamp: string;
   error?: {
     code: string;
-    details: string;
+    message: string;
+    details?: string;
   };
 }
 
@@ -26,6 +28,8 @@ export interface Pagination {
   limit: number;
   total: number;
   totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
 }
 
 /**
@@ -143,14 +147,14 @@ export interface UploadAvatarResponse
  * Group API Types
  */
 export interface Group {
-  id: string;
+  _id: string;
   name: string;
   description: string;
   currency: string;
   memberCount: number;
   totalExpenses: number;
   status: "active" | "completed" | "archived";
-  createdBy: string;
+  createdBy: any;
   createdAt: string;
   updatedAt: string;
   lastActivity: string;
@@ -159,12 +163,16 @@ export interface Group {
 }
 
 export interface GroupMember {
-  id: string;
+  _id: string;
   userId: string;
-  user: User;
+  fullName: string;
+  email: string;
+  avatar?: string;
   role: "admin" | "member";
   joinedAt: string;
   isActive: boolean;
+  totalExpenses?: number;
+  balance?: number;
 }
 
 export interface GroupSettings {
@@ -220,22 +228,44 @@ export interface Expense {
   currency: string;
   category: string;
   location?: string;
-  date: string;
-  paidBy: string;
-  paidByUser: User;
-  splitType: "equal" | "proportional" | "item-based";
-  splitDetails: SplitDetail[];
-  receiptUrl?: string;
+  expenseDate: string;
+  paidBy: {
+    id: string;
+    fullName: string;
+    avatar?: string;
+    email?: string;
+  };
+  participants: ExpenseParticipant[];
+  tags?: string[];
+  receipt?: {
+    url: string;
+    thumbnail?: string;
+    uploadedAt: string;
+    fileSize?: number;
+    mimeType?: string;
+  };
+  status: "active" | "cancelled";
+  createdBy: string;
   createdAt: string;
   updatedAt: string;
+  group?: {
+    id: string;
+    name: string;
+    currency: string;
+  };
 }
 
-export interface SplitDetail {
+export interface ExpenseParticipant {
   userId: string;
-  user: User;
+  user: {
+    id: string;
+    fullName: string;
+    avatar?: string;
+    email?: string;
+  };
   amount: number;
-  percentage: number;
-  isPaid: boolean;
+  share: number;
+  isPaid?: boolean;
   paidAt?: string;
 }
 
@@ -243,12 +273,16 @@ export interface CreateExpenseRequest {
   title: string;
   description?: string;
   amount: number;
+  currency: string;
   category: string;
+  paidBy: string;
+  participants: {
+    userId: string;
+    amount: number;
+  }[];
+  expenseDate?: string;
   location?: string;
-  date: string;
-  splitType: "equal" | "proportional" | "item-based";
-  splitDetails: Omit<SplitDetail, "user" | "isPaid" | "paidAt">[];
-  receipt?: File;
+  tags?: string[];
 }
 
 export interface UpdateExpenseRequest {
@@ -256,11 +290,13 @@ export interface UpdateExpenseRequest {
   description?: string;
   amount?: number;
   category?: string;
+  participants?: {
+    userId: string;
+    amount: number;
+  }[];
+  expenseDate?: string;
   location?: string;
-  date?: string;
-  splitType?: "equal" | "proportional" | "item-based";
-  splitDetails?: Omit<SplitDetail, "user" | "isPaid" | "paidAt">[];
-  receipt?: File;
+  tags?: string[];
 }
 
 export interface ExpensesListResponse extends PaginatedResponse<Expense> {}
@@ -279,28 +315,60 @@ export interface DeleteExpenseResponse extends ApiResponse<null> {}
 export interface Settlement {
   id: string;
   groupId: string;
-  fromUserId: string;
-  fromUser: User;
-  toUserId: string;
-  toUser: User;
+  debtor: {
+    id: string;
+    fullName: string;
+    avatar?: string;
+    email?: string;
+    phone?: string;
+  };
+  creditor: {
+    id: string;
+    fullName: string;
+    avatar?: string;
+    email?: string;
+    phone?: string;
+  };
   amount: number;
   currency: string;
-  status: "pending" | "confirmed" | "cancelled";
   description?: string;
+  paymentMethod: "cash" | "bank_transfer" | "momo" | "zalopay" | "other";
+  paymentDate: string;
+  reference?: string;
+  status: "pending" | "completed" | "cancelled";
+  completedAt?: string;
+  completedBy?: string;
+  cancelledAt?: string;
+  cancelledBy?: string;
+  reason?: string;
+  note?: string;
+  createdBy: string;
   createdAt: string;
   updatedAt: string;
-  confirmedAt?: string;
+  group?: {
+    id: string;
+    name: string;
+    currency: string;
+  };
 }
 
 export interface CreateSettlementRequest {
-  fromUserId: string;
-  toUserId: string;
+  debtorId: string;
+  creditorId: string;
   amount: number;
   description?: string;
+  paymentMethod: "cash" | "bank_transfer" | "momo" | "zalopay" | "other";
+  paymentDate?: string;
+  reference?: string;
 }
 
 export interface ConfirmSettlementRequest {
-  settlementId: string;
+  completedAt?: string;
+  note?: string;
+}
+
+export interface CancelSettlementRequest {
+  reason?: string;
 }
 
 export interface SettlementsListResponse
@@ -314,23 +382,46 @@ export interface ConfirmSettlementResponse extends ApiResponse<Settlement> {}
  * Statistics API Types
  */
 export interface StatisticsOverview {
-  totalExpenses: number;
-  totalMembers: number;
-  averageExpensePerPerson: number;
-  expenseByCategory: Array<{
-    category: string;
-    amount: number;
-    percentage: number;
-  }>;
-  expenseByMember: Array<{
+  group: {
+    id: string;
+    name: string;
+    currency: string;
+    memberCount: number;
+  };
+  period: {
+    from: string;
+    to: string;
+  };
+  overview: {
+    totalExpenses: number;
+    totalSettlements: number;
+    pendingAmount: number;
+    expenseCount: number;
+    settlementCount: number;
+    averageExpense: number;
+    largestExpense: number;
+    smallestExpense: number;
+  };
+  trends: {
+    expensesGrowth: number;
+    settlementsGrowth: number;
+    activeMembers: number;
+    newMembers: number;
+  };
+  topSpenders: Array<{
     userId: string;
-    user: User;
-    amount: number;
-    percentage: number;
+    fullName: string;
+    avatar?: string;
+    totalSpent: number;
+    expenseCount: number;
+    averageExpense: number;
   }>;
-  monthlyTrend: Array<{
-    month: string;
-    amount: number;
+  recentActivity: Array<{
+    type: "expense" | "settlement" | "group";
+    title: string;
+    amount?: number;
+    user: string;
+    createdAt: string;
   }>;
 }
 
@@ -342,19 +433,21 @@ export interface StatisticsOverviewResponse
  */
 export interface Notification {
   id: string;
-  userId: string;
-  type:
-    | "group_invite"
-    | "expense_added"
-    | "settlement_created"
-    | "payment_reminder"
-    | "system";
+  type: "expense" | "settlement" | "group" | "system";
   title: string;
   message: string;
-  data?: any;
+  description?: string;
+  priority: "low" | "medium" | "high" | "urgent";
   isRead: boolean;
+  data?: any;
+  actions?: Array<{
+    label: string;
+    action: string;
+    url: string;
+  }>;
   createdAt: string;
   readAt?: string;
+  expiresAt?: string;
 }
 
 export interface NotificationSettings {

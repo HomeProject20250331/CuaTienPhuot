@@ -1,5 +1,4 @@
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Form,
   FormControl,
@@ -52,7 +51,6 @@ export function LoginForm() {
     loginMutation.mutate({
       email: data.email,
       password: data.password,
-      rememberMe: data.remember,
     });
   };
 
@@ -93,25 +91,7 @@ export function LoginForm() {
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name="remember"
-          render={({ field }) => (
-            <FormItem className="flex flex-row items-center space-x-3 space-y-0">
-              <FormControl>
-                <Checkbox
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                />
-              </FormControl>
-              <div className="space-y-1 leading-none">
-                <FormLabel className="text-sm text-foreground cursor-pointer">
-                  Ghi nhớ đăng nhập
-                </FormLabel>
-              </div>
-            </FormItem>
-          )}
-        />
+
         {loginMutation.error && (
           <div className="text-red-500 text-sm text-center">
             {loginMutation.error.message || "Đăng nhập thất bại"}
